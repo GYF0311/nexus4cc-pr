@@ -1,25 +1,113 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { Terminal as XTerm } from '@xterm/xterm'
+import { Terminal as XTerm, type ITheme } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import Toolbar from './Toolbar'
 import SessionManager from './SessionManager'
+import TabBar from './TabBar'
+
+interface TmuxWindow {
+  index: number
+  name: string
+  active: boolean
+}
 
 interface Props {
   token: string
-  onLogout: () => void
 }
 
 const FONT_SIZE_KEY = 'nexus_font_size'
+const THEME_KEY = 'nexus_theme'
 const TAP_THRESHOLD = 8
 
-export default function Terminal({ token, onLogout }: Props) {
+export type ThemeMode = 'dark' | 'light'
+
+const DARK_THEME: ITheme = {
+  background: '#1a1a2e',
+  foreground: '#e2e8f0',
+  cursor: '#e2e8f0',
+  cursorAccent: '#1a1a2e',
+  selectionBackground: '#264f78',
+  selectionForeground: '#e2e8f0',
+  black: '#1a1a2e',
+  brightBlack: '#4a5568',
+  red: '#fc8181',
+  brightRed: '#feb2b2',
+  green: '#68d391',
+  brightGreen: '#9ae6b4',
+  yellow: '#f6e05e',
+  brightYellow: '#faf089',
+  blue: '#63b3ed',
+  brightBlue: '#90cdf4',
+  magenta: '#b794f4',
+  brightMagenta: '#d6bcfa',
+  cyan: '#76e4f7',
+  brightCyan: '#b2f5ea',
+  white: '#e2e8f0',
+  brightWhite: '#f7fafc',
+}
+
+const LIGHT_THEME: ITheme = {
+  background: '#ffffff',
+  foreground: '#333333',
+  cursor: '#333333',
+  cursorAccent: '#ffffff',
+  selectionBackground: '#add6ff',
+  selectionForeground: '#333333',
+  black: '#000000',
+  brightBlack: '#666666',
+  red: '#cd3131',
+  brightRed: '#f14c4c',
+  green: '#00bc00',
+  brightGreen: '#23d18b',
+  yellow: '#949800',
+  brightYellow: '#f5f543',
+  blue: '#0451a5',
+  brightBlue: '#3b8eea',
+  magenta: '#bc05bc',
+  brightMagenta: '#d670d6',
+  cyan: '#0598bc',
+  brightCyan: '#29b8db',
+  white: '#cccccc',
+  brightWhite: '#e5e5e5',
+}
+
+export const THEMES: Record<ThemeMode, ITheme> = {
+  dark: DARK_THEME,
+  light: LIGHT_THEME,
+}
+
+export function getInitialTheme(): ThemeMode {
+  const saved = localStorage.getItem(THEME_KEY)
+  if (saved === 'light' || saved === 'dark') return saved
+  return 'dark'
+}
+
+export default function Terminal({ token }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const userScrolledRef = useRef(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const [showSessions, setShowSessions] = useState(false)
+  const [windows, setWindows] = useState<TmuxWindow[]>([])
+  const [activeWindowIndex, setActiveWindowIndex] = useState(0)
+  const [showSettings, setShowSettings] = useState(false)
+  const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialTheme)
+
+  const headers = { Authorization: `Bearer ${token}` }
+
+  const applyTheme = useCallback((mode: ThemeMode) => {
+    const term = termRef.current
+    if (!term) return
+    term.options.theme = THEMES[mode]
+    localStorage.setItem(THEME_KEY, mode)
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    const newMode = themeMode === 'dark' ? 'light' : 'dark'
+    setThemeMode(newMode)
+    applyTheme(newMode)
+  }, [themeMode, applyTheme])
 
   const sendToWs = useCallback((data: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -27,36 +115,66 @@ export default function Terminal({ token, onLogout }: Props) {
     }
   }, [])
 
+  useEffect(() => {
+    applyTheme(themeMode)
+  }, [themeMode, applyTheme])
+
   const scrollToBottom = useCallback(() => {
     termRef.current?.scrollToBottom()
     userScrolledRef.current = false
   }, [])
 
+  async function fetchWindows() {
+    try {
+      const r = await fetch('/api/sessions', { headers })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const d = await r.json()
+      const wins = d.windows ?? []
+      setWindows(wins)
+      const active = wins.find((w: TmuxWindow) => w.active)
+      if (active) setActiveWindowIndex(active.index)
+    } catch {
+      // ignore
+    }
+  }
+
+  function attachToWindow(index: number) {
+    sendToWs('\x02' + index.toString())
+    setActiveWindowIndex(index)
+  }
+
+  async function closeWindow(index: number) {
+    try {
+      const r = await fetch(`/api/sessions/${index}`, { method: 'DELETE', headers })
+      if (r.ok) {
+        await fetchWindows()
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  async function createSession() {
+    try {
+      const r = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rel_path: '~' }),
+      })
+      if (r.ok) {
+        await fetchWindows()
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     const fontSize = parseInt(localStorage.getItem(FONT_SIZE_KEY) || '16', 10)
+    const initialTheme = getInitialTheme()
 
     const term = new XTerm({
-      theme: {
-        background: '#1a1a2e',
-        foreground: '#e2e8f0',
-        cursor: '#e2e8f0',
-        black: '#1a1a2e',
-        brightBlack: '#4a5568',
-        red: '#fc8181',
-        brightRed: '#feb2b2',
-        green: '#68d391',
-        brightGreen: '#9ae6b4',
-        yellow: '#f6e05e',
-        brightYellow: '#faf089',
-        blue: '#63b3ed',
-        brightBlue: '#90cdf4',
-        magenta: '#b794f4',
-        brightMagenta: '#d6bcfa',
-        cyan: '#76e4f7',
-        brightCyan: '#b2f5ea',
-        white: '#e2e8f0',
-        brightWhite: '#f7fafc',
-      },
+      theme: THEMES[initialTheme],
       fontSize,
       fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
       scrollback: 10000,
@@ -72,11 +190,9 @@ export default function Terminal({ token, onLogout }: Props) {
     term.open(container)
     fitAddon.fit()
 
-    // 禁用 xterm 自身的 touch 处理，由我们的监听器全权接管
     const viewport = container.querySelector('.xterm-viewport') as HTMLElement
     if (viewport) viewport.style.pointerEvents = 'none'
 
-    // 拦截桌面端浏览器默认快捷键
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       if (e.ctrlKey && ['w', 't', 'n', 'l', 'r'].includes(e.key.toLowerCase())) {
         e.preventDefault()
@@ -85,7 +201,6 @@ export default function Terminal({ token, onLogout }: Props) {
       return true
     })
 
-    // 动态获取实际行高，避免固定常量导致不同设备滑动灵敏度不一致
     function getLineHeight(): number {
       const core = (term as any)._core
       const cellH = core?._renderService?.dimensions?.css?.cell?.height
@@ -95,15 +210,14 @@ export default function Terminal({ token, onLogout }: Props) {
       return 20
     }
 
-    // WebSocket 连接
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
     const ws = new WebSocket(`${protocol}//${location.host}/ws?token=${encodeURIComponent(token)}`)
     wsRef.current = ws
 
     ws.onopen = () => {
-      // 每次建立连接时重新 fit，确保以当前设备的实际尺寸初始化 PTY
       fitAddon.fit()
       ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+      fetchWindows()
     }
 
     ws.onmessage = (e) => {
@@ -122,10 +236,8 @@ export default function Terminal({ token, onLogout }: Props) {
 
     ws.onerror = () => term.write('\r\n\x1b[31m[Nexus: WebSocket 错误]\x1b[0m\r\n')
 
-    // 桌面端键盘输入（xterm 直接处理）
     term.onData((data) => ws.send(data))
 
-    // 移动端 touch 处理
     let touchStartY = 0
     let touchLastY = 0
     let isPinching = false
@@ -153,7 +265,6 @@ export default function Terminal({ token, onLogout }: Props) {
     function onTouchMove(e: TouchEvent) {
       e.preventDefault()
       if (isPinching && e.touches.length === 2) {
-        // 双指缩放：调整字体大小
         const dist = getTouchDist(e)
         const scale = dist / pinchStartDist
         const newSize = Math.round(Math.max(8, Math.min(32, pinchStartFontSize * scale)))
@@ -166,7 +277,6 @@ export default function Terminal({ token, onLogout }: Props) {
           }
         }
       } else if (!isPinching) {
-        // 单指滑动：滚动终端
         const y = e.touches[0].clientY
         const lineHeight = getLineHeight()
         const lines = Math.round((touchLastY - y) / lineHeight)
@@ -190,7 +300,6 @@ export default function Terminal({ token, onLogout }: Props) {
       }
       const endY = e.changedTouches[0].clientY
       if (Math.abs(endY - touchStartY) < TAP_THRESHOLD) {
-        // tap：弹出输入法
         inputRef.current?.focus({ preventScroll: true })
       }
     }
@@ -199,7 +308,6 @@ export default function Terminal({ token, onLogout }: Props) {
     container.addEventListener('touchmove', onTouchMove, { passive: false })
     container.addEventListener('touchend', onTouchEnd, { passive: true })
 
-    // resize：窗口/容器尺寸变化时重新 fit 并通知服务端
     function sendResize() {
       fitAddon.fit()
       if (ws.readyState === WebSocket.OPEN) {
@@ -207,7 +315,6 @@ export default function Terminal({ token, onLogout }: Props) {
       }
     }
 
-    // 屏幕旋转时等待布局稳定后再 fit
     function onOrientationChange() {
       setTimeout(sendResize, 300)
     }
@@ -253,20 +360,27 @@ export default function Terminal({ token, onLogout }: Props) {
         onKeyDown={handleKeyDown}
         aria-hidden="true"
       />
+      <TabBar
+        windows={windows}
+        activeIndex={activeWindowIndex}
+        onSwitch={attachToWindow}
+        onClose={closeWindow}
+        onAdd={createSession}
+        onOpenSettings={() => setShowSettings(true)}
+      />
       <div ref={containerRef} style={styles.terminal} />
       <Toolbar
         token={token}
         sendToWs={sendToWs}
         scrollToBottom={scrollToBottom}
         termRef={termRef}
-        onOpenSessions={() => setShowSessions(true)}
+        themeMode={themeMode}
+        onToggleTheme={toggleTheme}
       />
-      {showSessions && (
+      {showSettings && (
         <SessionManager
           token={token}
-          sendToWs={sendToWs}
-          onClose={() => setShowSessions(false)}
-          onLogout={onLogout}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </div>
@@ -279,7 +393,6 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     width: '100%',
     height: '100%',
-    background: '#1a1a2e',
     position: 'relative',
   },
   terminal: {

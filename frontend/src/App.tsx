@@ -40,13 +40,8 @@ export default function App() {
     }
   }
 
-  function handleLogout() {
-    localStorage.removeItem(STORAGE_KEY)
-    setToken(null)
-  }
-
   if (token) {
-    return <Terminal token={token} onLogout={handleLogout} />
+    return <Terminal token={token} />
   }
 
   return (

@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, RefObject } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import { KeyDef, ToolbarConfig, ALL_KEYS, FACTORY_CONFIG } from './toolbarDefaults'
+import type { ThemeMode } from './Terminal'
 
 interface Props {
   token: string
   sendToWs: (data: string) => void
   scrollToBottom: () => void
   termRef: RefObject<Terminal | null>
-  onOpenSessions: () => void
+  themeMode: ThemeMode
+  onToggleTheme: () => void
 }
 
 const KEY_MAP = Object.fromEntries(ALL_KEYS.map(k => [k.id, k]))
@@ -15,6 +17,9 @@ const KEY_MAP = Object.fromEntries(ALL_KEYS.map(k => [k.id, k]))
 const CONFIG_KEY = 'nexus_toolbar_v2'
 const USER_DEFAULT_KEY = 'nexus_toolbar_default'
 const COLLAPSED_KEY = 'nexus_toolbar_collapsed'
+
+// PC 端断点
+const PC_BREAKPOINT = 768
 
 function loadConfig(): ToolbarConfig {
   try {
@@ -47,16 +52,25 @@ interface DragState {
 
 const ITEM_HEIGHT = 48 // px，每行编辑项高度
 
-export default function Toolbar({ token, sendToWs, scrollToBottom, onOpenSessions }: Props) {
+export default function Toolbar({ token, sendToWs, scrollToBottom, themeMode, onToggleTheme }: Props) {
   const [config, setConfig]           = useState<ToolbarConfig>(loadConfig)
   const [collapsed, setCollapsed]     = useState(() => localStorage.getItem(COLLAPSED_KEY) === 'true')
   const [editing, setEditing]         = useState(false)
   const [drag, setDrag]               = useState<DragState | null>(null)
   const [savedFlash, setSavedFlash]   = useState(false)
+  const [isPC, setIsPC]               = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const editScrollRef = useRef<HTMLDivElement>(null)
 
   const existsUserDefault = !!localStorage.getItem(USER_DEFAULT_KEY)
+
+  // 检测 PC/移动端
+  useEffect(() => {
+    const checkWidth = () => setIsPC(window.innerWidth >= PC_BREAKPOINT)
+    checkWidth()
+    window.addEventListener('resize', checkWidth)
+    return () => window.removeEventListener('resize', checkWidth)
+  }, [])
 
   // 启动时从服务端拉取配置，覆盖 localStorage 缓存
   useEffect(() => {
@@ -169,14 +183,14 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, onOpenSession
   // ---- 渲染按键 ----
   function renderKeys(ids: string[]) {
     return (
-      <div style={s.row}>
+      <div style={isPC ? s.rowPC : s.row}>
         {ids.map(id => {
           const key = KEY_MAP[id]
           if (!key) return null
           return (
             <button
               key={id}
-              style={s.key}
+              style={isPC ? s.keyPC : s.key}
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
             >
               {key.label}
@@ -189,33 +203,33 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, onOpenSession
 
   // ---- 编辑面板 ----
   if (editing) {
-    return (
-      <div ref={rootRef} style={s.editPanel}>
+    const editContent = (
+      <>
         {/* 头部 */}
-        <div style={s.editHeader}>
+        <div style={isPC ? s.editHeaderPC : s.editHeader}>
           <div>
-            <span style={s.editTitle}>工具栏编辑</span>
-            <div style={s.editHint}>
+            <span style={isPC ? s.editTitlePC : s.editTitle}>工具栏编辑</span>
+            <div style={isPC ? s.editHintPC : s.editHint}>
               {existsUserDefault ? '将恢复到您保存的默认配置' : '将恢复到出厂配置'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onPointerDown={(e) => { e.preventDefault(); resetConfig() }} style={s.editBtnSm}>重置</button>
+            <button onPointerDown={(e) => { e.preventDefault(); resetConfig() }} style={isPC ? s.editBtnSmPC : s.editBtnSm}>重置</button>
             <button
               onPointerDown={(e) => { e.preventDefault(); saveAsDefault() }}
-              style={savedFlash ? { ...s.editBtnSm, color: '#4ade80', borderColor: '#4ade80' } : s.editBtnSm}
+              style={savedFlash ? { ...(isPC ? s.editBtnSmPC : s.editBtnSm), color: '#4ade80', borderColor: '#4ade80' } : (isPC ? s.editBtnSmPC : s.editBtnSm)}
             >
               {savedFlash ? '已保存' : '存为默认'}
             </button>
-            <button onPointerDown={(e) => { e.preventDefault(); setEditing(false) }} style={s.editBtnPrimary}>完成</button>
+            <button onPointerDown={(e) => { e.preventDefault(); setEditing(false) }} style={isPC ? s.editBtnPrimaryPC : s.editBtnPrimary}>完成</button>
           </div>
         </div>
 
         {/* 列表 */}
-        <div ref={editScrollRef} style={s.editScroll}>
+        <div ref={editScrollRef} style={isPC ? s.editScrollPC : s.editScroll}>
           {(['pinned', 'expanded'] as const).map(section => (
             <div key={section} style={s.editSection}>
-              <div style={s.editSectionTitle}>
+              <div style={isPC ? s.editSectionTitlePC : s.editSectionTitle}>
                 {section === 'pinned' ? '📌 固定行（始终显示）' : '📂 展开区'}
               </div>
               {getDisplayIds(section).map((id, idx) => {
@@ -227,7 +241,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, onOpenSession
                   <div
                     key={id}
                     style={{
-                      ...s.editRow,
+                      ...(isPC ? s.editRowPC : s.editRow),
                       ...(isDragging ? s.editRowTarget : {}),
                       ...(isSource   ? s.editRowSource : {}),
                     }}
@@ -241,10 +255,10 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, onOpenSession
                     >
                       ☰
                     </div>
-                    <span style={s.editLabel}>{key.label}</span>
-                    <span style={s.editDesc}>{key.desc}</span>
+                    <span style={isPC ? s.editLabelPC : s.editLabel}>{key.label}</span>
+                    <span style={isPC ? s.editDescPC : s.editDesc}>{key.desc}</span>
                     <button
-                      style={s.removeBtn}
+                      style={isPC ? s.removeBtnPC : s.removeBtn}
                       onPointerDown={(e) => { e.preventDefault(); removeKey(section, id) }}
                     >
                       ×
@@ -258,48 +272,66 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, onOpenSession
           {/* 可添加 */}
           {availableKeys.length > 0 && (
             <div style={s.editSection}>
-              <div style={s.editSectionTitle}>➕ 可添加</div>
+              <div style={isPC ? s.editSectionTitlePC : s.editSectionTitle}>➕ 可添加</div>
               {availableKeys.map(key => (
-                <div key={key.id} style={s.editRow}>
-                  <span style={s.editLabel}>{key.label}</span>
-                  <span style={s.editDesc}>{key.desc}</span>
+                <div key={key.id} style={isPC ? s.editRowPC : s.editRow}>
+                  <span style={isPC ? s.editLabelPC : s.editLabel}>{key.label}</span>
+                  <span style={isPC ? s.editDescPC : s.editDesc}>{key.desc}</span>
                   <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexShrink: 0 }}>
-                    <button style={s.addBtn} onPointerDown={(e) => { e.preventDefault(); addKey('pinned', key.id) }}>固定</button>
-                    <button style={s.addBtn} onPointerDown={(e) => { e.preventDefault(); addKey('expanded', key.id) }}>展开</button>
+                    <button style={isPC ? s.addBtnPC : s.addBtn} onPointerDown={(e) => { e.preventDefault(); addKey('pinned', key.id) }}>固定</button>
+                    <button style={isPC ? s.addBtnPC : s.addBtn} onPointerDown={(e) => { e.preventDefault(); addKey('expanded', key.id) }}>展开</button>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      </>
+    )
+
+    if (isPC) {
+      return (
+        <div style={s.desktopOverlay}>
+          <div ref={rootRef} style={s.desktopEditPanel}>
+            {editContent}
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div ref={rootRef} style={s.editPanel}>
+        {editContent}
       </div>
     )
   }
 
   // ---- 正常工具栏 ----
   return (
-    <div ref={rootRef} style={s.container}>
-      <div style={s.topBar}>
+    <div ref={rootRef} style={isPC ? s.containerPC : s.container}>
+      <div style={isPC ? s.topBarPC : s.topBar}>
         <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }}>
           {collapsed ? '▲' : '▼'}
         </button>
         <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); setEditing(true) }}>✏</button>
-        <button style={s.sessionsBtn} onPointerDown={(e) => { e.preventDefault(); onOpenSessions() }}>会话</button>
+        <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); onToggleTheme() }}>
+          {themeMode === 'dark' ? '☀' : '☾'}
+        </button>
       </div>
 
       {renderKeys(config.pinned)}
 
       {!collapsed && (
-        <div style={s.expandedRows}>
-          {chunk(config.expanded, 8).map((row, i) => (
-            <div key={i} style={s.row}>
+        <div style={isPC ? s.expandedRowsPC : s.expandedRows}>
+          {chunk(config.expanded, isPC ? 16 : 8).map((row, i) => (
+            <div key={i} style={isPC ? s.rowPC : s.row}>
               {row.map(id => {
                 const key = KEY_MAP[id]
                 if (!key) return null
                 return (
                   <button
                     key={id}
-                    style={s.key}
+                    style={isPC ? s.keyPC : s.key}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
                   >
                     {key.label}
@@ -327,11 +359,24 @@ const s: Record<string, React.CSSProperties> = {
     userSelect: 'none',
     flexShrink: 0,
   },
+  containerPC: {
+    background: '#16213e',
+    borderTop: '1px solid #334155',
+    userSelect: 'none',
+    flexShrink: 0,
+    width: '100%',
+  },
   topBar: {
     display: 'flex',
     alignItems: 'center',
     padding: '3px 6px',
     gap: 4,
+  },
+  topBarPC: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '6px 12px',
+    gap: 8,
   },
   iconBtn: {
     background: 'transparent',
@@ -352,13 +397,30 @@ const s: Record<string, React.CSSProperties> = {
     padding: '2px 8px',
     marginLeft: 'auto',
   },
+  sessionsBtnPC: {
+    background: 'transparent',
+    border: '1px solid #334155',
+    borderRadius: 4,
+    color: '#93c5fd',
+    cursor: 'pointer',
+    fontSize: 13,
+    padding: '4px 12px',
+    marginLeft: 'auto',
+  },
   row: {
     display: 'flex',
     gap: 4,
     padding: '2px 6px',
     flexWrap: 'wrap',
   },
+  rowPC: {
+    display: 'flex',
+    gap: 6,
+    padding: '4px 12px',
+    flexWrap: 'wrap',
+  },
   expandedRows: { paddingBottom: 4 },
+  expandedRowsPC: { paddingBottom: 8 },
   key: {
     background: '#0f3460',
     border: '1px solid #334155',
@@ -374,6 +436,21 @@ const s: Record<string, React.CSSProperties> = {
     WebkitTapHighlightColor: 'transparent',
     flexShrink: 0,
   },
+  keyPC: {
+    background: '#0f3460',
+    border: '1px solid #334155',
+    borderRadius: 6,
+    color: '#e2e8f0',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontFamily: 'monospace',
+    minWidth: 48,
+    padding: '8px 10px',
+    textAlign: 'center',
+    touchAction: 'manipulation',
+    WebkitTapHighlightColor: 'transparent',
+    flexShrink: 0,
+  },
   // ---- 编辑面板 ----
   editPanel: {
     background: '#16213e',
@@ -383,6 +460,32 @@ const s: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     maxHeight: '55vh',
   },
+  // PC 端编辑面板样式
+  desktopOverlay: {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0,0,0,0.7)',
+    zIndex: 100,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '20px',
+  },
+  desktopEditPanel: {
+    background: '#16213e',
+    borderRadius: 12,
+    flexShrink: 0,
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
+    maxWidth: 600,
+    maxHeight: '70vh',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
+    overflow: 'hidden',
+  },
   editHeader: {
     display: 'flex',
     alignItems: 'center',
@@ -391,14 +494,31 @@ const s: Record<string, React.CSSProperties> = {
     borderBottom: '1px solid #334155',
     flexShrink: 0,
   },
+  editHeaderPC: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '16px 20px',
+    borderBottom: '1px solid #334155',
+    flexShrink: 0,
+  },
   editTitle: { color: '#e2e8f0', fontSize: 14, fontWeight: 600 },
+  editTitlePC: { color: '#e2e8f0', fontSize: 16, fontWeight: 600 },
   editHint: { color: '#475569', fontSize: 10, marginTop: 2 },
+  editHintPC: { color: '#475569', fontSize: 12, marginTop: 4 },
   editScroll: { overflowY: 'auto', flex: 1 },
+  editScrollPC: { overflowY: 'auto', flex: 1, padding: '8px 0' },
   editSection: { marginBottom: 4 },
   editSectionTitle: {
     color: '#64748b',
     fontSize: 11,
     padding: '6px 10px 3px',
+    letterSpacing: 0.5,
+  },
+  editSectionTitlePC: {
+    color: '#64748b',
+    fontSize: 12,
+    padding: '10px 20px 6px',
     letterSpacing: 0.5,
   },
   editRow: {
@@ -407,6 +527,15 @@ const s: Record<string, React.CSSProperties> = {
     padding: '0 10px',
     height: ITEM_HEIGHT,
     gap: 8,
+    borderBottom: '1px solid #1e293b',
+    boxSizing: 'border-box',
+  },
+  editRowPC: {
+    display: 'flex',
+    alignItems: 'center',
+    padding: '0 20px',
+    height: ITEM_HEIGHT,
+    gap: 12,
     borderBottom: '1px solid #1e293b',
     boxSizing: 'border-box',
   },
@@ -432,9 +561,24 @@ const s: Record<string, React.CSSProperties> = {
     minWidth: 48,
     flexShrink: 0,
   },
+  editLabelPC: {
+    color: '#e2e8f0',
+    fontFamily: 'monospace',
+    fontSize: 14,
+    minWidth: 60,
+    flexShrink: 0,
+  },
   editDesc: {
     color: '#64748b',
     fontSize: 11,
+    flex: 1,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+  editDescPC: {
+    color: '#64748b',
+    fontSize: 12,
     flex: 1,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
@@ -450,6 +594,16 @@ const s: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     lineHeight: 1,
   },
+  removeBtnPC: {
+    background: 'transparent',
+    border: 'none',
+    color: '#ef4444',
+    cursor: 'pointer',
+    fontSize: 20,
+    padding: '4px 8px',
+    flexShrink: 0,
+    lineHeight: 1,
+  },
   addBtn: {
     background: '#0f3460',
     border: '1px solid #334155',
@@ -458,6 +612,15 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 11,
     padding: '4px 8px',
+  },
+  addBtnPC: {
+    background: '#0f3460',
+    border: '1px solid #334155',
+    borderRadius: 4,
+    color: '#93c5fd',
+    cursor: 'pointer',
+    fontSize: 12,
+    padding: '6px 12px',
   },
   editBtnSm: {
     background: 'transparent',
@@ -468,6 +631,15 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 12,
     padding: '4px 10px',
   },
+  editBtnSmPC: {
+    background: 'transparent',
+    border: '1px solid #334155',
+    borderRadius: 4,
+    color: '#64748b',
+    cursor: 'pointer',
+    fontSize: 13,
+    padding: '6px 14px',
+  },
   editBtnPrimary: {
     background: '#3b82f6',
     border: 'none',
@@ -477,5 +649,15 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 12,
     fontWeight: 600,
     padding: '4px 12px',
+  },
+  editBtnPrimaryPC: {
+    background: '#3b82f6',
+    border: 'none',
+    borderRadius: 4,
+    color: '#fff',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontWeight: 600,
+    padding: '6px 16px',
   },
 }
