@@ -4,3 +4,13 @@
 
 # Sensitive scripts for reference only
 .scripts/
+
+# Environment (contains secrets)
+.env
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+frontend/dist/

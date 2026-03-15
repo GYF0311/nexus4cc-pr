@@ -1,0 +1,14 @@
+/* 移动端启用触摸覆盖层（桌面端保持 none，不拦截鼠标事件） */
+@media (hover: none) and (pointer: coarse) {
+  .touch-overlay {
+    pointer-events: auto !important;
+  }
+}
+
+/* xterm.js 样式修复 */
+.xterm {
+  height: 100%;
+}
+.xterm-viewport {
+  z-index: 0 !important;
+}
