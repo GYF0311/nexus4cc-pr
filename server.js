@@ -100,8 +100,9 @@ app.post('/api/sessions', authMiddleware, (req, res) => {
     if (profile) {
       shellCmd = `bash /app/nexus-run-claude.sh ${profile} ${cwd}`;
     } else {
-      // 启动 claude，退出后进入交互式 bash（保持窗口不关闭）
-      shellCmd = `bash -c 'cd "${cwd}" && claude -c --dangerously-skip-permissions || true; exec bash -i'`;
+      // 启动 claude，自动检测是否有历史会话
+      // 如果有 .claude-data/.claude/ 目录且非空，使用 -c 续接；否则创建新会话
+      shellCmd = `bash -c 'cd "${cwd}" && if [ -d ".claude-data/.claude" ] && [ "$(ls -A .claude-data/.claude 2>/dev/null)" ]; then claude -c --dangerously-skip-permissions; else claude --dangerously-skip-permissions; fi; exec bash -i'`;
     }
   }
 

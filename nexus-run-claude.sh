@@ -77,10 +77,20 @@ echo "║  Data    : $DATA_DIR"
 echo "╚══════════════════════════════════════════╝"
 echo ""
 
+# ── 辅助函数：检查是否有会话历史 ──
+has_session_history() {
+    [ -d "$DATA_DIR/.claude" ] && [ "$(ls -A "$DATA_DIR/.claude" 2>/dev/null)" ]
+}
+
 # ── 主循环：退出后提示续接 ──
 while true; do
-    # -c = continue last session（从 DATA_DIR 里的历史续接）
-    claude -c --dangerously-skip-permissions || true
+    if has_session_history; then
+        # 有历史，使用 -c 续接
+        claude -c --dangerously-skip-permissions || true
+    else
+        # 无历史，创建新会话
+        claude --dangerously-skip-permissions || true
+    fi
     echo ""
     echo "[Nexus] Claude exited.  r=restart(continue)  n=new session  b=bash shell  q=quit window"
     read -r REPLY
