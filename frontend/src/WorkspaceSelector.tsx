@@ -153,7 +153,7 @@ export default function WorkspaceSelector({ token, onClose, onConfirm }: Props) 
                   checked={shellType === 'bash'}
                   onChange={() => setShellType('bash')}
                 />
-                <span>Bash</span>
+                <span>Zsh</span>
               </label>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import { WebLinksAddon } from '@xterm/addon-web-links'
 import '@xterm/xterm/css/xterm.css'
 import Toolbar from './Toolbar'
+import TabBar from './TabBar'
 import SessionManager from './SessionManager'
 import BottomNav from './BottomNav'
 import WorkspaceSelector from './WorkspaceSelector'
@@ -82,8 +83,24 @@ export const THEMES: Record<ThemeMode, ITheme> = {
 export function getInitialTheme(): ThemeMode {
   const saved = localStorage.getItem(THEME_KEY)
   if (saved === 'light' || saved === 'dark') return saved
-  return 'dark'
+  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
+
+// 模块加载时立即初始化 CSS vars，避免首帧颜色错乱
+function initCssVars(mode: ThemeMode) {
+  const isDark = mode === 'dark'
+  const root = document.documentElement
+  root.style.setProperty('--nexus-bg', isDark ? '#16213e' : '#f1f5f9')
+  root.style.setProperty('--nexus-bg2', isDark ? '#0f3460' : '#dbeafe')
+  root.style.setProperty('--nexus-border', isDark ? '#334155' : '#cbd5e1')
+  root.style.setProperty('--nexus-text', isDark ? '#e2e8f0' : '#1e293b')
+  root.style.setProperty('--nexus-text2', isDark ? '#94a3b8' : '#475569')
+  root.style.setProperty('--nexus-muted', isDark ? '#64748b' : '#94a3b8')
+  root.style.setProperty('--nexus-tab-active', isDark ? '#0f3460' : '#dbeafe')
+  root.style.setProperty('--nexus-sheet-bg', isDark ? '#16213e' : '#f8fafc')
+  root.style.setProperty('--nexus-menu-bg', isDark ? '#1e293b' : '#ffffff')
+}
+initCssVars(getInitialTheme())
 
 // 复制模式覆盖层组件
 function CopyModeOverlay({ termRef, themeMode }: { termRef: React.MutableRefObject<XTerm | null>, themeMode: ThemeMode }) {
@@ -155,6 +172,116 @@ function CopyModeOverlay({ termRef, themeMode }: { termRef: React.MutableRefObje
   )
 }
 
+function Sidebar({ windows, activeIndex, onSwitch, onClose, onAdd, onOpenSettings }: {
+  windows: TmuxWindow[]
+  activeIndex: number
+  onSwitch: (index: number) => void
+  onClose: (index: number) => void
+  onAdd: () => void
+  onOpenSettings: () => void
+}) {
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
+  return (
+    <div style={{
+      width: 200,
+      flexShrink: 0,
+      background: 'var(--nexus-bg)',
+      borderRight: '1px solid var(--nexus-border)',
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+    }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+        {windows.map(win => (
+          <div
+            key={win.index}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              padding: '8px 12px',
+              cursor: 'pointer',
+              background: win.index === activeIndex ? 'var(--nexus-tab-active)' :
+                          hoveredIndex === win.index ? 'var(--nexus-bg2)' : 'transparent',
+              borderLeft: win.index === activeIndex ? '3px solid #3b82f6' : '3px solid transparent',
+              transition: 'background 0.15s',
+              gap: 8,
+            }}
+            onMouseEnter={() => setHoveredIndex(win.index)}
+            onMouseLeave={() => setHoveredIndex(null)}
+            onClick={() => onSwitch(win.index)}
+          >
+            <span style={{
+              flex: 1,
+              color: win.index === activeIndex ? 'var(--nexus-text)' : 'var(--nexus-text2)',
+              fontSize: 13,
+              fontFamily: 'Menlo, Monaco, "Cascadia Code", monospace',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              fontWeight: win.index === activeIndex ? 500 : 400,
+            }}>{win.name}</span>
+            {hoveredIndex === win.index && (
+              <button
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  padding: '0 2px',
+                  flexShrink: 0,
+                  opacity: 0.7,
+                  lineHeight: 1,
+                }}
+                onClick={(e) => { e.stopPropagation(); onClose(win.index) }}
+                title="关闭"
+              >×</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <div style={{
+        borderTop: '1px solid var(--nexus-border)',
+        padding: '8px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}>
+        <button
+          style={{
+            background: '#3b82f6',
+            border: 'none',
+            borderRadius: 6,
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            padding: '8px 12px',
+            width: '100%',
+            textAlign: 'left',
+          }}
+          onClick={onAdd}
+        >+ 新建会话</button>
+        <button
+          style={{
+            background: 'transparent',
+            border: '1px solid var(--nexus-border)',
+            borderRadius: 6,
+            color: 'var(--nexus-text2)',
+            cursor: 'pointer',
+            fontSize: 13,
+            padding: '7px 12px',
+            width: '100%',
+            textAlign: 'left',
+          }}
+          onClick={onOpenSettings}
+        >⚙ 配置管理</button>
+      </div>
+    </div>
+  )
+}
+
 export default function Terminal({ token }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const termRef = useRef<XTerm | null>(null)
@@ -169,13 +296,35 @@ export default function Terminal({ token }: Props) {
   const [selectionMode, setSelectionMode] = useState(false)
   const selectionModeRef = useRef(selectionMode)
   selectionModeRef.current = selectionMode
+  const [isWidePC, setIsWidePC] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
+
+  useEffect(() => {
+    const check = () => setIsWidePC(window.innerWidth >= 1024)
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
+  // CSS vars 独立于 xterm，组件 mount 即执行
+  const applyCssVars = useCallback((mode: ThemeMode) => {
+    const isDark = mode === 'dark'
+    const root = document.documentElement
+    root.style.setProperty('--nexus-bg', isDark ? '#16213e' : '#f1f5f9')
+    root.style.setProperty('--nexus-bg2', isDark ? '#0f3460' : '#dbeafe')
+    root.style.setProperty('--nexus-border', isDark ? '#334155' : '#cbd5e1')
+    root.style.setProperty('--nexus-text', isDark ? '#e2e8f0' : '#1e293b')
+    root.style.setProperty('--nexus-text2', isDark ? '#94a3b8' : '#475569')
+    root.style.setProperty('--nexus-muted', isDark ? '#64748b' : '#94a3b8')
+    root.style.setProperty('--nexus-tab-active', isDark ? '#0f3460' : '#dbeafe')
+    root.style.setProperty('--nexus-sheet-bg', isDark ? '#16213e' : '#f8fafc')
+    root.style.setProperty('--nexus-menu-bg', isDark ? '#1e293b' : '#ffffff')
+  }, [])
 
   const applyTheme = useCallback((mode: ThemeMode) => {
-    const term = termRef.current
-    if (!term) return
-    term.options.theme = THEMES[mode]
+    applyCssVars(mode)
     localStorage.setItem(THEME_KEY, mode)
-  }, [])
+    const term = termRef.current
+    if (term) term.options.theme = THEMES[mode]
+  }, [applyCssVars])
 
   const toggleTheme = useCallback(() => {
     const newMode = themeMode === 'dark' ? 'light' : 'dark'
@@ -353,6 +502,8 @@ export default function Terminal({ token }: Props) {
 
     let touchStartY = 0
     let touchLastY = 0
+    let touchScrollRemainder = 0
+    let cachedLineHeight = 20
     let isPinching = false
     let pinchStartDist = 0
     let pinchStartFontSize = fontSize
@@ -374,6 +525,8 @@ export default function Terminal({ token }: Props) {
         isPinching = false
         touchStartY = e.touches[0].clientY
         touchLastY = e.touches[0].clientY
+        touchScrollRemainder = 0
+        cachedLineHeight = getLineHeight()
       }
     }
 
@@ -395,10 +548,12 @@ export default function Terminal({ token }: Props) {
         }
       } else if (!isPinching) {
         const y = e.touches[0].clientY
-        const lineHeight = getLineHeight()
-        const lines = Math.round((touchLastY - y) / lineHeight)
+        const deltaY = touchLastY - y
         touchLastY = y
+        touchScrollRemainder += deltaY
+        const lines = Math.trunc(touchScrollRemainder / cachedLineHeight)
         if (lines !== 0) {
+          touchScrollRemainder -= lines * cachedLineHeight
           term.scrollLines(lines)
           const buffer = (term as any).buffer?.active
           if (buffer) {
@@ -466,6 +621,18 @@ export default function Terminal({ token }: Props) {
     else if (e.key === 'Backspace') { e.preventDefault(); sendToWs('\x7f') }
   }
 
+  const toolbarProps = {
+    token,
+    sendToWs,
+    scrollToBottom,
+    termRef,
+    themeMode,
+    onToggleTheme: toggleTheme,
+    selectionMode,
+    onToggleSelectionMode: () => setSelectionMode(v => !v),
+    onOpenSettings: () => setShowSettings(true),
+  }
+
   return (
     <div style={styles.wrapper}>
       {selectionMode && (
@@ -521,25 +688,44 @@ export default function Terminal({ token }: Props) {
         onKeyDown={handleKeyDown}
         aria-hidden="true"
       />
-      <div ref={containerRef} style={styles.terminal} />
-      <Toolbar
-        token={token}
-        sendToWs={sendToWs}
-        scrollToBottom={scrollToBottom}
-        termRef={termRef}
-        themeMode={themeMode}
-        onToggleTheme={toggleTheme}
-        selectionMode={selectionMode}
-        onToggleSelectionMode={() => setSelectionMode(v => !v)}
-        onOpenSettings={() => setShowSettings(true)}
-      />
-      <BottomNav
-        windows={windows}
-        activeIndex={activeWindowIndex}
-        onSwitch={attachToWindow}
-        onClose={closeWindow}
-        onAdd={openNewSessionDialog}
-      />
+
+      {isWidePC ? (
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+          <Sidebar
+            windows={windows}
+            activeIndex={activeWindowIndex}
+            onSwitch={attachToWindow}
+            onClose={closeWindow}
+            onAdd={openNewSessionDialog}
+            onOpenSettings={() => setShowSettings(true)}
+          />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+            <Toolbar {...toolbarProps} />
+            <div ref={containerRef} style={styles.terminal} />
+          </div>
+        </div>
+      ) : (
+        <>
+          <TabBar
+            windows={windows}
+            activeIndex={activeWindowIndex}
+            onSwitch={attachToWindow}
+            onClose={closeWindow}
+            onAdd={openNewSessionDialog}
+            onOpenSettings={() => setShowSettings(true)}
+          />
+          <div ref={containerRef} style={styles.terminal} />
+          <Toolbar {...toolbarProps} />
+          <BottomNav
+            windows={windows}
+            activeIndex={activeWindowIndex}
+            onSwitch={attachToWindow}
+            onClose={closeWindow}
+            onAdd={openNewSessionDialog}
+          />
+        </>
+      )}
+
       {showSettings && (
         <SessionManager
           token={token}

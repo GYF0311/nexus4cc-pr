@@ -43,6 +43,7 @@ const {
   TMUX_SESSION = 'main',
   WORKSPACE_ROOT = '/home/librae',
   PORT = '3000',
+  CLAUDE_PROXY = 'http://127.0.0.1:6789',
 } = process.env;
 
 if (!JWT_SECRET || !ACC_PASSWORD_HASH) {
@@ -94,15 +95,14 @@ app.post('/api/sessions', authMiddleware, (req, res) => {
 
   let shellCmd;
   if (shell_type === 'bash') {
-    shellCmd = 'bash';
+    shellCmd = 'zsh';
   } else {
-    // claude mode: use profile if specified, otherwise default claude without profile
+    // claude mode: inject proxy env vars so claude can reach the API
+    const proxyEnv = CLAUDE_PROXY ? `ALL_PROXY=${CLAUDE_PROXY} HTTPS_PROXY=${CLAUDE_PROXY} HTTP_PROXY=${CLAUDE_PROXY}` : '';
     if (profile) {
-      shellCmd = `bash /app/nexus-run-claude.sh ${profile} ${cwd}`;
+      shellCmd = `${proxyEnv} bash /app/nexus-run-claude.sh ${profile} ${cwd}`;
     } else {
-      // 启动 claude，自动检测是否有历史会话
-      // 如果有 .claude-data/.claude/ 目录且非空，使用 -c 续接；否则创建新会话
-      shellCmd = `bash -c 'cd "${cwd}" && if [ -d ".claude-data/.claude" ] && [ "$(ls -A .claude-data/.claude 2>/dev/null)" ]; then claude -c --dangerously-skip-permissions; else claude --dangerously-skip-permissions; fi; exec bash -i'`;
+      shellCmd = `${proxyEnv} claude --dangerously-skip-permissions; exec zsh -i`;
     }
   }
 
@@ -208,9 +208,24 @@ app.get('/api/sessions', authMiddleware, (req, res) => {
 // DELETE /api/sessions/:id — 关闭 tmux 窗口
 app.delete('/api/sessions/:id', authMiddleware, (req, res) => {
   const index = req.params.id
-  exec(`tmux kill-window -t ${TMUX_SESSION}:${index}`, (err) => {
-    if (err) return res.status(500).json({ error: err.message })
-    res.json({ ok: true })
+  // Check window count first; if this is the last window, create a fallback
+  // window before killing so the tmux session is not destroyed.
+  exec(`tmux list-windows -t ${TMUX_SESSION} -F "#{window_index}" 2>/dev/null | wc -l`, (countErr, countOut) => {
+    const windowCount = parseInt(countOut.trim()) || 0
+    if (windowCount <= 1) {
+      // Last window: create a new shell first to keep the session alive
+      exec(`tmux new-window -t ${TMUX_SESSION} -n shell "zsh"`, () => {
+        exec(`tmux kill-window -t ${TMUX_SESSION}:${index}`, (err) => {
+          if (err) return res.status(500).json({ error: err.message })
+          res.json({ ok: true })
+        })
+      })
+    } else {
+      exec(`tmux kill-window -t ${TMUX_SESSION}:${index}`, (err) => {
+        if (err) return res.status(500).json({ error: err.message })
+        res.json({ ok: true })
+      })
+    }
   })
 })
 
@@ -222,6 +237,7 @@ app.post('/api/sessions/:id/attach', authMiddleware, (req, res) => {
     res.json({ ok: true })
   })
 })
+
 
 // SPA fallback — 所有非 API 路由返回 index.html
 app.get('*', (req, res) => {
@@ -235,31 +251,36 @@ app.get('*', (req, res) => {
 let ptyProc = null;
 const clients = new Set();
 
+
 function ensurePty() {
   if (ptyProc) return;
-  ptyProc = pty.spawn('tmux', ['attach-session', '-t', TMUX_SESSION], {
-    name: 'xterm-256color',
-    cols: 220,
-    rows: 50,
-    env: { ...process.env, LANG: 'C.UTF-8', TERM: 'xterm-256color' },
-  });
+  // Ensure the tmux session exists before attaching; create it if needed.
+  exec(`tmux has-session -t ${TMUX_SESSION} 2>/dev/null || tmux new-session -d -s ${TMUX_SESSION} -n shell "zsh"`, (err) => {
+    if (ptyProc) return; // another caller may have completed first
+    ptyProc = pty.spawn('tmux', ['attach-session', '-t', TMUX_SESSION], {
+      name: 'xterm-256color',
+      cols: 220,
+      rows: 50,
+      env: { ...process.env, LANG: 'C.UTF-8', TERM: 'xterm-256color' },
+    });
 
-  ptyProc.onData((data) => {
-    for (const ws of clients) {
-      if (ws.readyState === 1) ws.send(data);
-    }
-  });
-
-  ptyProc.onExit(({ exitCode }) => {
-    console.log(`PTY exited with code ${exitCode}`);
-    ptyProc = null;
-    // 重建 tmux session，供下次连接使用
-    exec(`tmux new-session -d -s ${TMUX_SESSION}`);
-    for (const ws of clients) {
-      if (ws.readyState === 1) {
-        ws.send('\r\n[Nexus: tmux session ended — refresh to reconnect]\r\n');
+    ptyProc.onData((data) => {
+      for (const ws of clients) {
+        if (ws.readyState === 1) ws.send(data);
       }
-    }
+    });
+
+    ptyProc.onExit(({ exitCode }) => {
+      console.log(`PTY exited with code ${exitCode}`);
+      ptyProc = null;
+      // Safety net: recreate the tmux session for the next connection.
+      exec(`tmux new-session -d -s ${TMUX_SESSION}`);
+      for (const ws of clients) {
+        if (ws.readyState === 1) {
+          ws.send('\r\n[Nexus: tmux session ended — refresh to reconnect]\r\n');
+        }
+      }
+    });
   });
 }
 

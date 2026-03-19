@@ -64,8 +64,10 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   const [isPC, setIsPC]               = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const editScrollRef = useRef<HTMLDivElement>(null)
+  const isDraggingMouse = useRef(false)
 
   const existsUserDefault = !!localStorage.getItem(USER_DEFAULT_KEY)
+  const tc = toolbarColors(themeMode)
 
   // 检测 PC/移动端
   useEffect(() => {
@@ -102,6 +104,25 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
     el.addEventListener('touchstart', prevent, { passive: false })
     return () => el.removeEventListener('touchstart', prevent)
   }, [editing])
+
+  // 鼠标拖拽全局监听 — 在 drag 变化时重新注册，确保闭包引用最新的 onDragMove/onDragEnd
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!isDraggingMouse.current) return
+      onDragMove(e.clientY)
+    }
+    function onMouseUp() {
+      if (!isDraggingMouse.current) return
+      isDraggingMouse.current = false
+      onDragEnd()
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+  }, [drag])
 
   function saveConfig(c: ToolbarConfig) {
     localStorage.setItem(CONFIG_KEY, JSON.stringify(c))
@@ -193,7 +214,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           return (
             <button
               key={id}
-              style={isPC ? s.keyPC : s.key}
+              style={{...(isPC ? s.keyPC : s.key), background: tc.keyBg, color: tc.keyColor, borderColor: tc.border}}
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
             >
               {key.label}
@@ -245,16 +266,22 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
                     key={id}
                     style={{
                       ...(isPC ? s.editRowPC : s.editRow),
+                      borderBottomColor: tc.editRowBorder,
                       ...(isDragging ? s.editRowTarget : {}),
                       ...(isSource   ? s.editRowSource : {}),
                     }}
                   >
                     {/* 拖拽手柄 */}
                     <div
-                      style={s.dragHandle}
-                      onTouchStart={(e) => onDragStart(section, idx, e.touches[0].clientY)}
-                      onTouchMove={(e) => onDragMove(e.touches[0].clientY)}
+                      style={{...s.dragHandle, color: tc.handleColor}}
+                      onTouchStart={(e) => { e.stopPropagation(); onDragStart(section, idx, e.touches[0].clientY) }}
+                      onTouchMove={(e) => { e.stopPropagation(); onDragMove(e.touches[0].clientY) }}
                       onTouchEnd={() => onDragEnd()}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        isDraggingMouse.current = true
+                        onDragStart(section, idx, e.clientY)
+                      }}
                     >
                       ☰
                     </div>
@@ -277,7 +304,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
             <div style={s.editSection}>
               <div style={isPC ? s.editSectionTitlePC : s.editSectionTitle}>➕ 可添加</div>
               {availableKeys.map(key => (
-                <div key={key.id} style={isPC ? s.editRowPC : s.editRow}>
+                <div key={key.id} style={{...(isPC ? s.editRowPC : s.editRow), borderBottomColor: tc.editRowBorder}}>
                   <span style={isPC ? s.editLabelPC : s.editLabel}>{key.label}</span>
                   <span style={isPC ? s.editDescPC : s.editDesc}>{key.desc}</span>
                   <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexShrink: 0 }}>
@@ -295,7 +322,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
     if (isPC) {
       return (
         <div style={s.desktopOverlay}>
-          <div ref={rootRef} style={s.desktopEditPanel}>
+          <div ref={rootRef} style={{...s.desktopEditPanel, background: tc.editBg, borderColor: tc.border}}>
             {editContent}
           </div>
         </div>
@@ -303,21 +330,88 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
     }
 
     return (
-      <div ref={rootRef} style={s.editPanel}>
+      <div ref={rootRef} style={{...s.editPanel, background: tc.editBg, borderTopColor: tc.border}}>
         {editContent}
       </div>
     )
   }
 
   // ---- 正常工具栏 ----
+  if (isPC) {
+    return (
+      <div ref={rootRef} style={{...s.containerPC, background: tc.bg, borderTopColor: tc.border}}>
+        {/* PC: 控制按钮 + 固定键同一行 */}
+        <div style={s.topBarPC}>
+          <button style={{...s.iconBtnPC, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }}>
+            {collapsed ? '▲' : '▼'}
+          </button>
+          <button style={{...s.iconBtnPC, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); setEditing(true) }}>✏</button>
+          <button style={{...s.iconBtnPC, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); onToggleTheme() }}>
+            {themeMode === 'dark' ? '☀' : '☾'}
+          </button>
+          <button
+            style={selectionMode ? s.copyBtnActivePC : s.copyBtnPC}
+            onPointerDown={(e) => { e.preventDefault(); onToggleSelectionMode() }}
+            title={selectionMode ? '退出复制模式' : '进入复制模式'}
+          >
+            {selectionMode ? '完成' : '复制'}
+          </button>
+          {onOpenSettings && (
+            <button style={{...s.iconBtnPC, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); onOpenSettings() }} title="设置">
+              ⚙
+            </button>
+          )}
+          {/* 固定键内联在控制按钮右侧 */}
+          <div style={s.pinnedRowPC}>
+            {config.pinned.map(id => {
+              const key = KEY_MAP[id]
+              if (!key) return null
+              return (
+                <button
+                  key={id}
+                  style={{...s.keyPC, background: tc.keyBg, color: tc.keyColor, borderColor: tc.border}}
+                  onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
+                >
+                  {key.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+        {/* 展开区：仅在非折叠时显示第二行 */}
+        {!collapsed && (
+          <div style={s.expandedRowsPC}>
+            {chunk(config.expanded, 16).map((row, i) => (
+              <div key={i} style={s.rowPC}>
+                {row.map(id => {
+                  const key = KEY_MAP[id]
+                  if (!key) return null
+                  return (
+                    <button
+                      key={id}
+                      style={{...s.keyPC, background: tc.keyBg, color: tc.keyColor, borderColor: tc.border}}
+                      onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
+                    >
+                      {key.label}
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   return (
-    <div ref={rootRef} style={isPC ? s.containerPC : s.container}>
-      <div style={isPC ? s.topBarPC : s.topBar}>
-        <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }}>
+    <div ref={rootRef} style={{...s.container, background: tc.bg, borderTopColor: tc.border}}>
+      <div style={s.topBar}>
+        <button style={{...s.iconBtn, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }}>
           {collapsed ? '▲' : '▼'}
         </button>
-        <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); setEditing(true) }}>✏</button>
-        <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); onToggleTheme() }}>
+        <button style={{...s.iconBtn, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); setEditing(true) }}>✏</button>
+        <button style={{...s.iconBtn, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); onToggleTheme() }}>
           {themeMode === 'dark' ? '☀' : '☾'}
         </button>
         <button
@@ -328,7 +422,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           {selectionMode ? '完成' : '复制'}
         </button>
         {onOpenSettings && (
-          <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); onOpenSettings() }} title="设置">
+          <button style={{...s.iconBtn, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); onOpenSettings() }} title="设置">
             ⚙
           </button>
         )}
@@ -337,16 +431,16 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
       {renderKeys(config.pinned)}
 
       {!collapsed && (
-        <div style={isPC ? s.expandedRowsPC : s.expandedRows}>
-          {chunk(config.expanded, isPC ? 16 : 8).map((row, i) => (
-            <div key={i} style={isPC ? s.rowPC : s.row}>
+        <div style={s.expandedRows}>
+          {chunk(config.expanded, 8).map((row, i) => (
+            <div key={i} style={s.row}>
               {row.map(id => {
                 const key = KEY_MAP[id]
                 if (!key) return null
                 return (
                   <button
                     key={id}
-                    style={isPC ? s.keyPC : s.key}
+                    style={{...s.key, background: tc.keyBg, color: tc.keyColor, borderColor: tc.border}}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
                   >
                     {key.label}
@@ -365,6 +459,20 @@ function chunk<T>(arr: T[], n: number): T[][] {
   const out: T[][] = []
   for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n))
   return out
+}
+
+function toolbarColors(themeMode: ThemeMode) {
+  const isDark = themeMode === 'dark'
+  return {
+    bg: isDark ? '#16213e' : '#f1f5f9',
+    border: isDark ? '#334155' : '#cbd5e1',
+    keyBg: isDark ? '#0f3460' : '#e2e8f0',
+    keyColor: isDark ? '#e2e8f0' : '#1e293b',
+    iconColor: isDark ? '#64748b' : '#475569',
+    editBg: isDark ? '#16213e' : '#f8fafc',
+    editRowBorder: isDark ? '#1e293b' : '#e2e8f0',
+    handleColor: isDark ? '#475569' : '#94a3b8',
+  }
 }
 
 const s: Record<string, React.CSSProperties> = {
@@ -390,8 +498,10 @@ const s: Record<string, React.CSSProperties> = {
   topBarPC: {
     display: 'flex',
     alignItems: 'center',
-    padding: '6px 12px',
-    gap: 8,
+    padding: '4px 12px',
+    gap: 6,
+    height: 44,
+    boxSizing: 'border-box',
   },
   iconBtn: {
     background: 'transparent',
@@ -410,7 +520,6 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 12,
     padding: '4px 10px',
-    marginLeft: 'auto',
     fontWeight: 500,
   },
   copyBtnActive: {
@@ -421,7 +530,6 @@ const s: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: 12,
     padding: '4px 10px',
-    marginLeft: 'auto',
     fontWeight: 500,
   },
   sessionsBtn: {
@@ -696,5 +804,46 @@ const s: Record<string, React.CSSProperties> = {
     fontSize: 13,
     fontWeight: 600,
     padding: '6px 16px',
+  },
+  // PC 紧凑控制按钮
+  iconBtnPC: {
+    background: 'transparent',
+    border: 'none',
+    color: '#64748b',
+    cursor: 'pointer',
+    fontSize: 13,
+    padding: '3px 6px',
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+  copyBtnPC: {
+    background: '#0f3460',
+    border: '1px solid #334155',
+    borderRadius: 4,
+    color: '#93c5fd',
+    cursor: 'pointer',
+    fontSize: 12,
+    padding: '3px 8px',
+    fontWeight: 500,
+    flexShrink: 0,
+  },
+  copyBtnActivePC: {
+    background: '#1e3a5f',
+    border: '1px solid #4ade80',
+    borderRadius: 4,
+    color: '#4ade80',
+    cursor: 'pointer',
+    fontSize: 12,
+    padding: '3px 8px',
+    fontWeight: 500,
+    flexShrink: 0,
+  },
+  pinnedRowPC: {
+    display: 'flex',
+    gap: 6,
+    flexWrap: 'wrap',
+    flex: 1,
+    marginLeft: 8,
+    alignItems: 'center',
   },
 }

@@ -108,8 +108,8 @@ export default function TabBar({ windows, activeIndex, onSwitch, onClose, onAdd,
           <div style={s.menuOverlay} onPointerDown={() => setMenuIndex(null)} />
           <div style={{
             ...s.contextMenu,
-            left: Math.min(menuPos.x, window.innerWidth - 120),
-            top: Math.min(menuPos.y + 10, window.innerHeight - 80),
+            left: Math.min(menuPos.x, window.innerWidth - 180),
+            top: Math.min(menuPos.y + 10, window.innerHeight - 120),
           }}>
             <div style={s.menuTitle}>{windows.find(w => w.index === menuIndex)?.name}</div>
             <button
@@ -121,6 +121,7 @@ export default function TabBar({ windows, activeIndex, onSwitch, onClose, onAdd,
           </div>
         </>
       )}
+
     </>
   )
 }
@@ -129,8 +130,8 @@ const s: Record<string, React.CSSProperties> = {
   container: {
     display: 'flex',
     alignItems: 'center',
-    background: '#16213e',
-    borderBottom: '1px solid #334155',
+    background: 'var(--nexus-bg)',
+    borderBottom: '1px solid var(--nexus-border)',
     flexShrink: 0,
     height: 44,
   },
@@ -165,10 +166,10 @@ const s: Record<string, React.CSSProperties> = {
     flexShrink: 0,
   },
   tabActive: {
-    background: '#0f3460',
+    background: 'var(--nexus-tab-active)',
   },
   tabName: {
-    color: '#94a3b8',
+    color: 'var(--nexus-text2)',
     fontSize: 13,
     fontFamily: 'Menlo, Monaco, "Cascadia Code", monospace',
     overflow: 'hidden',
@@ -176,7 +177,7 @@ const s: Record<string, React.CSSProperties> = {
     maxWidth: 100,
   },
   tabNameActive: {
-    color: '#e2e8f0',
+    color: 'var(--nexus-text)',
     fontWeight: 500,
   },
   activeIndicator: {
@@ -193,13 +194,13 @@ const s: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: 4,
     padding: '0 8px',
-    borderLeft: '1px solid #334155',
+    borderLeft: '1px solid var(--nexus-border)',
     flexShrink: 0,
   },
   iconBtn: {
     background: 'transparent',
     border: 'none',
-    color: '#64748b',
+    color: 'var(--nexus-muted)',
     cursor: 'pointer',
     fontSize: 18,
     padding: '6px 10px',
@@ -218,19 +219,19 @@ const s: Record<string, React.CSSProperties> = {
   },
   contextMenu: {
     position: 'fixed',
-    background: '#1e293b',
+    background: 'var(--nexus-menu-bg)',
     borderRadius: 8,
     padding: '8px 0',
     minWidth: 140,
     boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
-    border: '1px solid #334155',
+    border: '1px solid var(--nexus-border)',
     zIndex: 200,
   },
   menuTitle: {
-    color: '#64748b',
+    color: 'var(--nexus-muted)',
     fontSize: 11,
     padding: '4px 16px 8px',
-    borderBottom: '1px solid #334155',
+    borderBottom: '1px solid var(--nexus-border)',
     marginBottom: 4,
     maxWidth: 200,
     overflow: 'hidden',
