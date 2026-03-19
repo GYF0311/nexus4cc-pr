@@ -12,3 +12,8 @@
 .xterm-viewport {
   z-index: 0 !important;
 }
+
+/* Loading spinner animation */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

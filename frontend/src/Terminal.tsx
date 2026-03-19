@@ -220,7 +220,7 @@ function Sidebar({ windows, activeIndex, onSwitch, onClose, onAdd, onOpenSetting
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
               fontWeight: win.index === activeIndex ? 500 : 400,
-            }}>{win.name}</span>
+            }}><span style={{ color: 'var(--nexus-muted)', marginRight: 6 }}>{win.index}:</span>{win.name}</span>
             {hoveredIndex === win.index && (
               <button
                 style={{
@@ -297,6 +297,8 @@ export default function Terminal({ token }: Props) {
   const selectionModeRef = useRef(selectionMode)
   selectionModeRef.current = selectionMode
   const [isWidePC, setIsWidePC] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
+  const [isConnecting, setIsConnecting] = useState(true)
+  const pausePollingRef = useRef(false)
 
   useEffect(() => {
     const check = () => setIsWidePC(window.innerWidth >= 1024)
@@ -344,7 +346,9 @@ export default function Terminal({ token }: Props) {
 
   // 定期刷新窗口列表（每 2 秒），保持与 tmux 同步
   useEffect(() => {
-    const interval = setInterval(fetchWindows, 2000)
+    const interval = setInterval(() => {
+      if (!pausePollingRef.current) fetchWindows()
+    }, 2000)
     return () => clearInterval(interval)
   }, [])
 
@@ -375,6 +379,9 @@ export default function Terminal({ token }: Props) {
       })
       if (r.ok) {
         setActiveWindowIndex(index)
+        // 暂停轮询 3 秒，避免 optimistic 状态被覆盖
+        pausePollingRef.current = true
+        setTimeout(() => { pausePollingRef.current = false }, 3000)
       }
     } catch {
       // ignore
@@ -477,6 +484,7 @@ export default function Terminal({ token }: Props) {
     wsRef.current = ws
 
     ws.onopen = () => {
+      setIsConnecting(false)
       fitAddon.fit()
       ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
       fetchWindows()
@@ -699,8 +707,14 @@ export default function Terminal({ token }: Props) {
             onAdd={openNewSessionDialog}
             onOpenSettings={() => setShowSettings(true)}
           />
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
             <div ref={containerRef} style={styles.terminal} />
+            {isConnecting && (
+              <div style={styles.loadingOverlay}>
+                <div style={styles.spinner} />
+                <span style={styles.loadingText}>Connecting...</span>
+              </div>
+            )}
             <Toolbar {...toolbarProps} />
           </div>
         </div>
@@ -714,7 +728,15 @@ export default function Terminal({ token }: Props) {
             onAdd={openNewSessionDialog}
             onOpenSettings={() => setShowSettings(true)}
           />
-          <div ref={containerRef} style={styles.terminal} />
+          <div style={{ flex: 1, position: 'relative' }}>
+            <div ref={containerRef} style={styles.terminal} />
+            {isConnecting && (
+              <div style={styles.loadingOverlay}>
+                <div style={styles.spinner} />
+                <span style={styles.loadingText}>Connecting...</span>
+              </div>
+            )}
+          </div>
           <Toolbar {...toolbarProps} />
           <BottomNav
             windows={windows}
@@ -766,5 +788,31 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 16,
     pointerEvents: 'none',
     zIndex: -1,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'var(--nexus-bg)',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+    zIndex: 10,
+  },
+  spinner: {
+    width: 32,
+    height: 32,
+    border: '3px solid var(--nexus-border)',
+    borderTopColor: '#3b82f6',
+    borderRadius: '50%',
+    animation: 'spin 1s linear infinite',
+  },
+  loadingText: {
+    color: 'var(--nexus-text2)',
+    fontSize: 14,
   },
 }
