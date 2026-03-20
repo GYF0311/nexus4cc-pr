@@ -158,3 +158,7 @@
 | PWA：注册 Service Worker + SVG 图标 | `793543c` |
 | 跟随系统深色/浅色模式自动切换 | `3f736a0` |
 | 布局：100dvh 修复 iOS Safari 高度 | `3f736a0` |
+| 任务取消按钮（AbortController + SIGTERM）| `34d9f0f` |
+| TaskPanel 5s 轮询 + Telegram TG 来源标识 | `0854359` |
+| 工具栏新增 ^Z / ^A / ^E 快捷键 | `19e7cb1` |
+| 修复：tasks cwd 路径含冒号解析错误 | `e346c8b` |
