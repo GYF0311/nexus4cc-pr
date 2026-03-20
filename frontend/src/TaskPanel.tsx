@@ -28,6 +28,7 @@ export default function TaskPanel({ token, windows, activeWindowName, onClose }:
   const [streamOutput, setStreamOutput] = useState('')
   const [sessionName, setSessionName] = useState(activeWindowName)
   const outputRef = useRef<HTMLPreElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     fetchTasks()
@@ -54,11 +55,15 @@ export default function TaskPanel({ token, windows, activeWindowName, onClose }:
     setStreamOutput('')
     setSelectedTask(null)
 
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
       const r = await fetch('/api/tasks', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_name: sessionName, prompt: prompt.trim() }),
+        signal: controller.signal,
       })
       if (!r.ok || !r.body) {
         setStreamOutput('请求失败: ' + r.status)
@@ -88,9 +93,12 @@ export default function TaskPanel({ token, windows, activeWindowName, onClose }:
         }
       }
     } catch (e: any) {
-      setStreamOutput('错误: ' + e.message)
+      if (e.name !== 'AbortError') {
+        setStreamOutput('错误: ' + e.message)
+      }
     }
 
+    abortRef.current = null
     setIsRunning(false)
     setPrompt('')
     fetchTasks()
@@ -143,13 +151,23 @@ export default function TaskPanel({ token, windows, activeWindowName, onClose }:
               }
             }}
           />
-          <button
-            style={{ ...s.sendBtn, opacity: isRunning || !prompt.trim() ? 0.5 : 1 }}
-            onClick={runTask}
-            disabled={isRunning || !prompt.trim()}
-          >
-            {isRunning ? '执行中...' : '▶ 发送任务'}
-          </button>
+          <div style={{ display: 'flex', gap: 8, alignSelf: 'flex-end' }}>
+            {isRunning && (
+              <button
+                style={{ ...s.sendBtn, background: '#ef4444' }}
+                onClick={() => abortRef.current?.abort()}
+              >
+                ✕ 取消
+              </button>
+            )}
+            <button
+              style={{ ...s.sendBtn, opacity: isRunning || !prompt.trim() ? 0.5 : 1 }}
+              onClick={runTask}
+              disabled={isRunning || !prompt.trim()}
+            >
+              {isRunning ? '执行中...' : '▶ 发送任务'}
+            </button>
+          </div>
         </div>
 
         {/* Output area */}
