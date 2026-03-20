@@ -212,7 +212,7 @@ export default function TaskPanel({ token, windows, activeWindowName, tmuxSessio
                     <span style={{
                       ...s.statusDot,
                       background: task.status === 'success' ? '#22c55e' : task.status === 'running' ? '#f59e0b' : '#ef4444',
-                      ...(task.status === 'running' ? { animation: 'spin 1.5s linear infinite' } : {}),
+                      ...(task.status === 'running' ? { animation: 'pulse 1.5s ease-in-out infinite' } : {}),
                     }} />
                     <span style={s.taskPrompt}>{task.prompt.slice(0, 60)}{task.prompt.length > 60 ? '...' : ''}</span>
                     {task.source === 'telegram' && <span style={s.sourceBadge}>TG</span>}
