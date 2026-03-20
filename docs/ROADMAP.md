@@ -151,3 +151,10 @@
 | F-15 完整：动态 Agent 状态（运行/等待/shell）| 本会话 |
 | TabBar 移动端 session 切换（多 session 时显示）| 本会话 |
 | 动态页面标题（显示窗口名+状态图标）| 本会话 |
+| 浏览器通知：任务完成时推送（TaskPanel）| `016771b` |
+| 浮动「回底部」按钮（term.onScroll 追踪）| `d2f73f6` |
+| 优化：xterm/WS 双 Effect 分离（窗口切换无抖动）| `dcac810` |
+| 修复：多客户端 resize 改用最小尺寸策略 | `3b56134` |
+| PWA：注册 Service Worker + SVG 图标 | `793543c` |
+| 跟随系统深色/浅色模式自动切换 | `3f736a0` |
+| 布局：100dvh 修复 iOS Safari 高度 | `3f736a0` |
