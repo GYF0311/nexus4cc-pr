@@ -373,6 +373,69 @@ function updateTask(id, updates) {
   }
 }
 
+/**
+ * F-17: 统一任务执行入口 — spawn claude -p, 管理任务记录, 回调给各渠道
+ * @param {string} prompt
+ * @param {string} cwd
+ * @param {{ sessionName?: string, source?: string, tmuxSession?: string, onChunk?: (chunk:string,isErr:boolean)=>void, onDone?: (result:object)=>void }} opts
+ * @returns {string} taskId
+ */
+function runTask(prompt, cwd, opts = {}) {
+  const { sessionName, source = 'web', tmuxSession, onChunk, onDone } = opts
+  const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+  const createdAt = new Date().toISOString()
+
+  const taskRecord = {
+    id: taskId,
+    session_name: sessionName || '',
+    prompt: prompt.slice(0, 1000),
+    status: 'running',
+    output: '',
+    error: '',
+    createdAt,
+    source,
+    ...(tmuxSession && tmuxSession !== TMUX_SESSION ? { tmux_session: tmuxSession } : {}),
+  }
+  const allTasks = loadTasks()
+  allTasks.push(taskRecord)
+  saveTasks(allTasks)
+
+  const proxyEnv = CLAUDE_PROXY ? { ALL_PROXY: CLAUDE_PROXY, HTTPS_PROXY: CLAUDE_PROXY, HTTP_PROXY: CLAUDE_PROXY } : {}
+  const child = spawn('claude', ['-p', prompt, '--dangerously-skip-permissions'], {
+    cwd,
+    env: { ...process.env, ...proxyEnv },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+
+  let output = ''
+  let errorOutput = ''
+
+  child.stdout.on('data', (data) => {
+    const chunk = data.toString()
+    output += chunk
+    onChunk?.(chunk, false)
+  })
+  child.stderr.on('data', (data) => {
+    const chunk = data.toString()
+    errorOutput += chunk
+    onChunk?.(chunk, true)
+  })
+
+  child.on('close', (code) => {
+    const status = code === 0 ? 'success' : 'error'
+    updateTask(taskId, {
+      status,
+      output: output.slice(-10000),
+      error: errorOutput.slice(-1000),
+      completedAt: new Date().toISOString(),
+      exitCode: code,
+    })
+    onDone?.({ taskId, status, output, errorOutput, exitCode: code })
+  })
+
+  return { taskId, kill: () => { if (!child.killed) child.kill() } }
+}
+
 // GET /api/tasks — 获取任务历史
 app.get('/api/tasks', authMiddleware, (req, res) => {
   const tasks = loadTasks()
@@ -389,7 +452,7 @@ app.delete('/api/tasks/:id', authMiddleware, (req, res) => {
 
 // POST /api/tasks — 创建新任务，SSE 流式返回
 app.post('/api/tasks', authMiddleware, (req, res) => {
-  const { session_name, prompt, profile, tmux_session } = req.body || {}
+  const { session_name, prompt, tmux_session } = req.body || {}
   if (!prompt) return res.status(400).json({ error: 'prompt required' })
 
   // 找到 session 对应的 cwd
@@ -401,88 +464,32 @@ app.post('/api/tasks', authMiddleware, (req, res) => {
       const parts = line.split(':')
       const name = parts[1]
       const path = parts.slice(2).join(':')
-      if (name === session_name && path) {
-        cwd = path
-        break
-      }
+      if (name === session_name && path) { cwd = path; break }
     }
   } catch {}
-
-  const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-  const createdAt = new Date().toISOString()
 
   // 设置 SSE headers
   res.setHeader('Content-Type', 'text/event-stream')
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
 
-  // 代理环境变量
-  const proxyEnv = CLAUDE_PROXY ? { ALL_PROXY: CLAUDE_PROXY, HTTPS_PROXY: CLAUDE_PROXY, HTTP_PROXY: CLAUDE_PROXY } : {}
-
-  // 构建 claude 命令
-  const args = ['-p', prompt, '--dangerously-skip-permissions']
-  if (profile) args.push('--profile', profile)
-
-  // 立即保存 running 状态，让 TaskPanel 轮询可以看到进行中的任务
-  const taskRecord = {
-    id: taskId,
-    session_name,
-    tmux_session: targetSession !== TMUX_SESSION ? targetSession : undefined,
-    prompt: prompt.slice(0, 1000),
-    status: 'running',
-    output: '',
-    error: '',
-    createdAt,
+  const createdAt = new Date().toISOString()
+  const { taskId, kill } = runTask(prompt, cwd, {
+    sessionName: session_name,
     source: 'web',
-  }
-  const allTasks = loadTasks()
-  allTasks.push(taskRecord)
-  if (allTasks.length > 100) allTasks.shift()
-  saveTasks(allTasks)
-
-  const child = spawn('claude', args, {
-    cwd,
-    env: { ...process.env, ...proxyEnv },
-    stdio: ['ignore', 'pipe', 'pipe']
+    tmuxSession: targetSession,
+    onChunk: (chunk, isErr) => {
+      const ev = isErr ? 'error' : 'output'
+      res.write(`event: ${ev}\ndata: ${JSON.stringify({ chunk })}\n\n`)
+    },
+    onDone: ({ taskId: tid, status, exitCode }) => {
+      res.write(`event: done\ndata: ${JSON.stringify({ taskId: tid, status, exitCode })}\n\n`)
+      res.end()
+    },
   })
 
-  let output = ''
-  let errorOutput = ''
-
-  // 发送任务开始事件
   res.write(`event: start\ndata: ${JSON.stringify({ taskId, session_name, prompt, createdAt })}\n\n`)
-
-  child.stdout.on('data', (data) => {
-    const chunk = data.toString()
-    output += chunk
-    res.write(`event: output\ndata: ${JSON.stringify({ chunk })}\n\n`)
-  })
-
-  child.stderr.on('data', (data) => {
-    const chunk = data.toString()
-    errorOutput += chunk
-    res.write(`event: error\ndata: ${JSON.stringify({ chunk })}\n\n`)
-  })
-
-  child.on('close', (code) => {
-    const status = code === 0 ? 'success' : 'error'
-    const completedAt = new Date().toISOString()
-    updateTask(taskId, {
-      status,
-      output: output.slice(-10000),
-      error: errorOutput.slice(-1000),
-      completedAt,
-      exitCode: code,
-    })
-
-    res.write(`event: done\ndata: ${JSON.stringify({ taskId, status, exitCode: code })}\n\n`)
-    res.end()
-  })
-
-  // 客户端断开时清理
-  req.on('close', () => {
-    if (!child.killed) child.kill()
-  })
+  req.on('close', kill)
 })
 
 
@@ -618,68 +625,45 @@ app.post('/api/webhooks/telegram', (req, res) => {
     return
   }
 
-  // 执行 claude -p 的通用函数，支持 Telegram 增量进度更新
+  // 执行 claude -p，Telegram 渠道：增量进度推送
   async function runClaudePrompt(prompt, cwd, sessionName) {
-    const taskId = `tg_${Date.now()}`
-    const createdAt = new Date().toISOString()
-
-    // 立即记录为 running，让 Web TaskPanel 可以看到进行中的 Telegram 任务
-    const tgRecord = {
-      id: taskId, session_name: sessionName || 'telegram',
-      prompt: prompt.slice(0, 1000), status: 'running',
-      output: '', error: '', createdAt, source: 'telegram', chatId,
-    }
-    const allTasks = loadTasks()
-    allTasks.push(tgRecord)
-    if (allTasks.length > 100) allTasks.shift()
-    saveTasks(allTasks)
-
     const msgId = await telegramSend(chatId, `⏳ *执行中*（session: \`${sessionName || 'default'}\`）\n\n_等待输出..._`)
 
-    const proxyEnv = CLAUDE_PROXY ? { ALL_PROXY: CLAUDE_PROXY, HTTPS_PROXY: CLAUDE_PROXY, HTTP_PROXY: CLAUDE_PROXY } : {}
-    const child = spawn('claude', ['-p', prompt, '--dangerously-skip-permissions'], {
-      cwd,
-      env: { ...process.env, ...proxyEnv },
-      stdio: ['ignore', 'pipe', 'pipe'],
-    })
+    let currentOutput = ''
+    let currentError = ''
+    let currentTaskId = null
 
-    let output = ''
-    let errorOutput = ''
-
-    child.stdout.on('data', (data) => { output += data.toString() })
-    child.stderr.on('data', (data) => { errorOutput += data.toString() })
-
-    // 每 5 秒更新进度：Telegram 消息 + 任务记录（让 Web TaskPanel 可见）
     const progressInterval = setInterval(() => {
-      const preview = (output || errorOutput).trim()
+      const preview = (currentOutput || currentError).trim()
       if (preview) {
         if (msgId) {
           const truncated = preview.length > 3000 ? '…' + preview.slice(-3000) : preview
           telegramEdit(chatId, msgId, `⏳ *执行中*（session: \`${sessionName || 'default'}\`）\n\`\`\`\n${truncated}\n\`\`\``)
         }
-        updateTask(taskId, { output: output.slice(-10000), error: errorOutput.slice(-1000) })
+        // 更新任务记录，让 Web TaskPanel 可见中间输出
+        if (currentTaskId) updateTask(currentTaskId, { output: currentOutput.slice(-10000), error: currentError.slice(-1000) })
       }
     }, 5000)
 
-    child.on('close', (code) => {
-      clearInterval(progressInterval)
-      const result = output.trim() || errorOutput.trim() || '(无输出)'
-      const truncated = result.length > 3800 ? result.slice(0, 3800) + '\n\n…(输出已截断)' : result
-      const status = code === 0 ? '✅' : '❌'
-      if (msgId) {
-        telegramEdit(chatId, msgId, `${status} *执行完成*（session: \`${sessionName || 'default'}\`）\n\`\`\`\n${truncated}\n\`\`\``)
-      } else {
-        telegramSend(chatId, `${status} *执行完成*\n\`\`\`\n${truncated}\n\`\`\``)
-      }
-
-      updateTask(taskId, {
-        status: code === 0 ? 'success' : 'error',
-        output: output.slice(-10000),
-        error: errorOutput.slice(-1000),
-        completedAt: new Date().toISOString(),
-        exitCode: code,
-      })
+    const { taskId } = runTask(prompt, cwd, {
+      sessionName: sessionName || 'telegram',
+      source: 'telegram',
+      onChunk: (chunk, isErr) => {
+        if (isErr) currentError += chunk; else currentOutput += chunk
+      },
+      onDone: ({ exitCode }) => {
+        clearInterval(progressInterval)
+        const result = currentOutput.trim() || currentError.trim() || '(无输出)'
+        const truncated = result.length > 3800 ? result.slice(0, 3800) + '\n\n…(输出已截断)' : result
+        const status = exitCode === 0 ? '✅' : '❌'
+        if (msgId) {
+          telegramEdit(chatId, msgId, `${status} *执行完成*（session: \`${sessionName || 'default'}\`）\n\`\`\`\n${truncated}\n\`\`\``)
+        } else {
+          telegramSend(chatId, `${status} *执行完成*\n\`\`\`\n${truncated}\n\`\`\``)
+        }
+      },
     })
+    currentTaskId = taskId
   }
 
   // 处理文件/图片上传
