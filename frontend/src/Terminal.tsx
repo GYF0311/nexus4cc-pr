@@ -1235,12 +1235,14 @@ export default function Terminal({ token }: Props) {
             onClose={closeWindow}
             onAdd={openNewSessionDialog}
             onOpenSettings={() => setShowSettings(true)}
+            onOpenTasks={() => setShowTasks(true)}
             onUpload={handleFileUpload}
             onRename={renameWindow}
             token={token}
             sessions={tmuxSessions}
             activeSession={activeTmuxSession}
             onSwitchSession={handleSwitchSession}
+            windowOutputs={windowOutputs}
           />
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
             <div ref={containerRef} style={styles.terminal} onClick={() => inputRef.current?.focus()} />

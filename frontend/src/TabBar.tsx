@@ -38,29 +38,34 @@ interface Props {
   onClose: (index: number) => void
   onAdd: () => void
   onOpenSettings: () => void
+  onOpenTasks?: () => void
   onUpload?: () => void
   onRename?: (index: number, name: string) => void
   token?: string
   sessions?: string[]
   activeSession?: string
   onSwitchSession?: (session: string) => void
+  windowOutputs?: Record<number, { output: string; clients: number; idleMs: number; connected: boolean }>
 }
 
-export default function TabBar({ windows, activeIndex, onSwitch, onClose, onAdd, onOpenSettings, onUpload, onRename, token, sessions, activeSession, onSwitchSession }: Props) {
+export default function TabBar({ windows, activeIndex, onSwitch, onClose, onAdd, onOpenSettings, onOpenTasks, onUpload, onRename, token, sessions, activeSession, onSwitchSession, windowOutputs: windowOutputsProp }: Props) {
   const [menuIndex, setMenuIndex] = useState<number | null>(null)
   const [menuPos, setMenuPos] = useState({ x: 0, y: 0 })
   const [renameIndex, setRenameIndex] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
   const [showSessionPicker, setShowSessionPicker] = useState(false)
-  const [windowOutputs, setWindowOutputs] = useState<Record<number, { output: string; clients: number; idleMs: number; connected: boolean }>>({})
+  const [localWindowOutputs, setLocalWindowOutputs] = useState<Record<number, { output: string; clients: number; idleMs: number; connected: boolean }>>({})
   const scrollRef = useRef<HTMLDivElement>(null)
   const activeTabRef = useRef<HTMLDivElement>(null)
   const renameInputRef = useRef<HTMLInputElement>(null)
 
-  // 轮询获取窗口输出预览
+  // Use provided windowOutputs if available, otherwise poll internally
+  const windowOutputs = windowOutputsProp ?? localWindowOutputs
+
+  // 轮询获取窗口输出预览（仅在未从上层传入时）
   useEffect(() => {
-    if (!token) return
+    if (windowOutputsProp !== undefined || !token) return
     const fetchOutputs = async () => {
       const outputs: Record<number, any> = {}
       for (const win of windows) {
@@ -69,12 +74,12 @@ export default function TabBar({ windows, activeIndex, onSwitch, onClose, onAdd,
           if (r.ok) outputs[win.index] = await r.json()
         } catch {}
       }
-      setWindowOutputs(outputs)
+      setLocalWindowOutputs(outputs)
     }
     fetchOutputs()
     const interval = setInterval(fetchOutputs, 5000)
     return () => clearInterval(interval)
-  }, [windows.map(w => w.index).join(','), token])
+  }, [windows.map(w => w.index).join(','), token, windowOutputsProp])
 
   // 自动滚动到激活的 tab
   useEffect(() => {
@@ -199,6 +204,7 @@ export default function TabBar({ windows, activeIndex, onSwitch, onClose, onAdd,
           )}
           <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); onAdd() }} title="新建会话">+</button>
           {onUpload && <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); onUpload() }} title="上传文件">📎</button>}
+          {onOpenTasks && <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); onOpenTasks() }} title="任务面板">📋</button>}
           <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); onOpenSettings() }} title="设置">⚙</button>
         </div>
       </div>
