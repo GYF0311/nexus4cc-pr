@@ -48,7 +48,7 @@ export default function App() {
     <div style={styles.loginContainer}>
       <div style={styles.loginBox}>
         <h1 style={styles.title}>Nexus</h1>
-        <p style={styles.subtitle}>AI Agent 终端面板 <span style={styles.version}>v1.6.1</span></p>
+        <p style={styles.subtitle}>AI Agent 终端面板 <span style={styles.version}>v1.7.0</span></p>
         <form onSubmit={handleLogin} style={styles.form}>
           <input
             type="password"

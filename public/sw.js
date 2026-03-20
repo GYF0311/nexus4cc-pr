@@ -1,5 +1,6 @@
-const CACHE_NAME = 'nexus-v2';
-const STATIC_ASSETS = ['/', '/index.html', '/icon.svg', '/manifest.json'];
+const CACHE_NAME = 'nexus-v3';
+// Cache only truly static assets — NOT index.html (references hashed JS bundles that change each build)
+const STATIC_ASSETS = ['/icon.svg', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -19,9 +20,11 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
-  // 不缓存 API 和 WebSocket
+  // Skip API, WebSocket, and navigation requests (let browser handle them fresh)
   if (url.pathname.startsWith('/api') || url.pathname.startsWith('/ws')) return;
+  if (event.request.mode === 'navigate') return;
 
+  // Cache-first for known static assets (icon, manifest, Vite hashed bundles)
   event.respondWith(
     caches.match(event.request).then(cached => cached || fetch(event.request))
   );
