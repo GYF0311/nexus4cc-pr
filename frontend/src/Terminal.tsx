@@ -1572,31 +1572,39 @@ export default function Terminal({ token }: Props) {
           <div style={{ fontSize: 13 }}>点击「+ 新建会话」开始</div>
         </div>
       )}
-      {showScrollback && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: 'var(--nexus-bg)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--nexus-border)', flexShrink: 0, background: 'var(--nexus-menu-bg)' }}>
-            <span style={{ color: 'var(--nexus-text)', fontWeight: 600, fontSize: 15 }}>历史记录</span>
-            <span style={{ color: 'var(--nexus-muted)', fontSize: 11, flex: 1, textAlign: 'center' }}>滚到底部返回终端</span>
-            <button
-              style={{ background: 'transparent', border: 'none', color: 'var(--nexus-text2)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
-              onClick={closeScrollback}
-            >×</button>
+      {showScrollback && (() => {
+        const termTheme = termRef.current?.options.theme ?? {}
+        const termBg = (termTheme as any).background ?? '#1a1a2e'
+        const termFg = (termTheme as any).foreground ?? '#e2e8f0'
+        const termFontSize = termRef.current?.options.fontSize ?? 14
+        const termFontFamily = termRef.current?.options.fontFamily ?? 'Menlo, Monaco, monospace'
+        const termMuted = (termTheme as any).brightBlack ?? '#4a5568'
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: termBg, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${termMuted}44`, flexShrink: 0 }}>
+              <span style={{ color: termFg, fontWeight: 600, fontSize: termFontSize, fontFamily: termFontFamily }}>历史记录</span>
+              <span style={{ color: termMuted, fontSize: termFontSize * 0.75, flex: 1, textAlign: 'center', fontFamily: termFontFamily }}>滚到底部返回终端</span>
+              <button
+                style={{ background: 'transparent', border: 'none', color: termMuted, fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+                onClick={closeScrollback}
+              >×</button>
+            </div>
+            <div
+              ref={scrollbackOverlayRef}
+              onScroll={handleOverlayScroll}
+              style={{ flex: 1, overflowY: 'auto', padding: '8px 0', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+            >
+              {scrollbackLoading ? (
+                <div style={{ color: termMuted, textAlign: 'center', padding: 32, fontFamily: termFontFamily, fontSize: termFontSize }}>加载中...</div>
+              ) : (
+                <pre style={{ margin: 0, padding: '0 10px', fontFamily: termFontFamily, fontSize: termFontSize, color: termFg, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.5 }}>
+                  {scrollbackContent}
+                </pre>
+              )}
+            </div>
           </div>
-          <div
-            ref={scrollbackOverlayRef}
-            onScroll={handleOverlayScroll}
-            style={{ flex: 1, overflowY: 'auto', padding: '8px 0', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
-          >
-            {scrollbackLoading ? (
-              <div style={{ color: 'var(--nexus-muted)', textAlign: 'center', padding: 32 }}>加载中...</div>
-            ) : (
-              <pre style={{ margin: 0, padding: '0 12px', fontFamily: 'Menlo, Monaco, "Cascadia Code", monospace', fontSize: 13, color: 'var(--nexus-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.5 }}>
-                {scrollbackContent}
-              </pre>
-            )}
-          </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
