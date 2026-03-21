@@ -73,6 +73,8 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   const [drag, setDrag]               = useState<DragState | null>(null)
   const [savedFlash, setSavedFlash]   = useState(false)
   const [showQuickMenu, setShowQuickMenu] = useState(false)
+  const [menuPos, setMenuPos]         = useState({ bottom: 60, right: 8 })
+  const menuBtnRef                    = useRef<HTMLDivElement>(null)
   const [isPC, setIsPC]               = useState(false)
   const [isWidePC, setIsWidePC]       = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -452,12 +454,12 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           {selectionMode ? '✓' : '⎘'}
         </button>
         {/* ⚙ quick menu */}
-        <div style={{ position: 'relative' }}>
-          <button style={{...s.iconBtn, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); setShowQuickMenu(v => !v) }} title="更多">⚙</button>
+        <div ref={menuBtnRef} style={{ position: 'relative' }}>
+          <button style={{...s.iconBtn, color: tc.iconColor}} onPointerDown={(e) => { e.preventDefault(); if (!showQuickMenu && menuBtnRef.current) { const rect = menuBtnRef.current.getBoundingClientRect(); setMenuPos({ bottom: window.innerHeight - rect.top + 4, right: window.innerWidth - rect.right }) } setShowQuickMenu(v => !v) }} title="更多">⚙</button>
           {showQuickMenu && (
             <>
               <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} onPointerDown={() => setShowQuickMenu(false)} />
-              <div style={{ position: 'absolute', bottom: '100%', right: 0, background: 'var(--nexus-menu-bg)', border: '1px solid var(--nexus-border)', borderRadius: 8, padding: '4px 0', minWidth: 160, zIndex: 301, boxShadow: '0 -4px 16px rgba(0,0,0,0.3)', marginBottom: 6 }}>
+              <div style={{ position: 'fixed', bottom: menuPos.bottom, right: menuPos.right, background: 'var(--nexus-menu-bg)', border: '1px solid var(--nexus-border)', borderRadius: 8, padding: '4px 0', minWidth: 160, zIndex: 301, boxShadow: '0 -4px 16px rgba(0,0,0,0.3)' }}>
                 <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); onToggleTheme(); setShowQuickMenu(false) }}>
                   <span style={{ width: 18 }}>{themeMode === 'dark' ? '☀' : '☾'}</span>
                   <span>{themeMode === 'dark' ? '切换亮色' : '切换暗色'}</span>
@@ -482,7 +484,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           )}
         </div>
         <button
-          style={keyboardActive ? s.copyBtnActive : {...s.iconBtn, color: tc.iconColor}}
+          style={keyboardActive ? {...s.copyBtnActive, marginLeft: 'auto'} : {...s.iconBtn, color: tc.iconColor, marginLeft: 'auto'}}
           onPointerDown={(e) => { e.preventDefault(); onToggleKeyboard?.() }}
           title={keyboardActive ? '隐藏键盘' : '显示键盘'}
         >⌨</button>
@@ -581,27 +583,27 @@ const s: Record<string, React.CSSProperties> = {
   iconBtn: {
     background: 'transparent',
     border: 'none',
-    color: '#64748b',
+    color: 'var(--nexus-text2)',
     cursor: 'pointer',
     fontSize: 14,
     padding: '4px 8px',
     borderRadius: 4,
   },
   copyBtn: {
-    background: '#0f3460',
-    border: '1px solid #334155',
+    background: 'transparent',
+    border: '1px solid var(--nexus-border)',
     borderRadius: 4,
-    color: '#93c5fd',
+    color: 'var(--nexus-text2)',
     cursor: 'pointer',
     fontSize: 12,
     padding: '4px 10px',
     fontWeight: 500,
   },
   copyBtnActive: {
-    background: '#1e3a5f',
-    border: '1px solid #4ade80',
+    background: 'rgba(59,130,246,0.15)',
+    border: '1px solid #3b82f6',
     borderRadius: 4,
-    color: '#4ade80',
+    color: '#3b82f6',
     cursor: 'pointer',
     fontSize: 12,
     padding: '4px 10px',
@@ -893,19 +895,19 @@ const s: Record<string, React.CSSProperties> = {
   },
   copyBtnPC: {
     background: 'transparent',
-    border: 'none',
+    border: '1px solid var(--nexus-border)',
     borderRadius: 4,
-    color: 'var(--nexus-muted)',
+    color: 'var(--nexus-text2)',
     cursor: 'pointer',
     fontSize: 13,
     padding: '4px 8px',
     flexShrink: 0,
   },
   copyBtnActivePC: {
-    background: 'transparent',
-    border: 'none',
+    background: 'rgba(59,130,246,0.15)',
+    border: '1px solid #3b82f6',
     borderRadius: 4,
-    color: '#4ade80',
+    color: '#3b82f6',
     cursor: 'pointer',
     fontSize: 13,
     padding: '4px 8px',

@@ -983,7 +983,9 @@ export default function Terminal({ token }: Props) {
         const lines = Math.trunc(touchScrollRemainder / cachedLineHeight)
         if (lines !== 0) {
           touchScrollRemainder -= lines * cachedLineHeight
-          term.scrollLines(lines)
+          // Positive deltaY = finger moved up = user wants older content (scroll up).
+          // term.scrollLines: negative = toward older (up), positive = toward newer (down).
+          term.scrollLines(-lines)
           const buffer = (term as any).buffer?.active
           if (buffer) {
             const atBottom = buffer.viewportY >= buffer.baseY
@@ -1026,6 +1028,15 @@ export default function Terminal({ token }: Props) {
     container.addEventListener('touchmove', onTouchMove, { passive: false })
     container.addEventListener('touchend', onTouchEnd, { passive: true })
 
+    // Layer 4: Prevent any touch on the hidden input itself from showing keyboard
+    function onInputTouchStart(e: TouchEvent) {
+      if (!keyboardVisibleRef.current) e.preventDefault()
+    }
+    const inp = inputRef.current
+    if (inp) {
+      inp.addEventListener('touchstart', onInputTouchStart, { passive: false })
+    }
+
     function sendResize() {
       fitAddonRef.current?.fit()
       if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -1047,6 +1058,7 @@ export default function Terminal({ token }: Props) {
       container.removeEventListener('touchstart', onTouchStart)
       container.removeEventListener('touchmove', onTouchMove)
       container.removeEventListener('touchend', onTouchEnd)
+      if (inp) inp.removeEventListener('touchstart', onInputTouchStart)
       term.dispose()
       termRef.current = null
       fitAddonRef.current = null
@@ -1163,6 +1175,18 @@ export default function Terminal({ token }: Props) {
     return () => vv.removeEventListener('resize', handleResize)
   }, [isWidePC])
 
+  // Layer 2: Global focusin guard — immediately blur hidden input if keyboard should be hidden
+  useEffect(() => {
+    if (isWidePC) return
+    function handleFocusin(e: FocusEvent) {
+      if (e.target === inputRef.current && !keyboardVisibleRef.current) {
+        ;(e.target as HTMLElement).blur()
+      }
+    }
+    document.addEventListener('focusin', handleFocusin)
+    return () => document.removeEventListener('focusin', handleFocusin)
+  }, [isWidePC])
+
   const toolbarProps = {
     token,
     sendToWs,
@@ -1244,6 +1268,7 @@ export default function Terminal({ token }: Props) {
         ref={inputRef}
         style={styles.hiddenInput}
         inputMode={!isWidePC && !keyboardVisible ? 'none' : undefined}
+        readOnly={!isWidePC && !keyboardVisible}
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
