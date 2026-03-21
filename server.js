@@ -295,6 +295,19 @@ app.get('/api/sessions/:id/output', authMiddleware, (req, res) => {
   });
 });
 
+// GET /api/sessions/:id/scrollback — fetch tmux scrollback history (works in alternate screen too)
+app.get('/api/sessions/:id/scrollback', authMiddleware, (req, res) => {
+  const windowIndex = parseInt(req.params.id, 10)
+  const session = req.query.session || TMUX_SESSION
+  const lines = Math.min(parseInt(req.query.lines || '3000', 10), 10000)
+  exec(`tmux capture-pane -p -S -${lines} -t ${session}:${windowIndex} 2>/dev/null`, (err, stdout) => {
+    if (err) return res.status(500).json({ error: err.message })
+    // trim trailing spaces tmux pads to pane width
+    const content = stdout.split('\n').map(l => l.trimEnd()).join('\n')
+    res.json({ content })
+  })
+})
+
 // GET /api/config — 服务端配置信息（供前端初始化用）
 app.get('/api/config', authMiddleware, (req, res) => {
   res.json({ tmuxSession: TMUX_SESSION, workspaceRoot: WORKSPACE_ROOT })

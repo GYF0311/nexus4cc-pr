@@ -452,6 +452,10 @@ export default function Terminal({ token }: Props) {
   const [isConnecting, setIsConnecting] = useState(false)
   const hasConnectedRef = useRef(false)
   const [showTasks, setShowTasks] = useState(false)
+  const [showScrollback, setShowScrollback] = useState(false)
+  const [scrollbackContent, setScrollbackContent] = useState('')
+  const [scrollbackLoading, setScrollbackLoading] = useState(false)
+  const scrollbackBottomRef = useRef<HTMLDivElement>(null)
   const pausePollingRef = useRef(false)
   const activeWindowIndexRef = useRef(0)
   const windowsInitializedRef = useRef(false)
@@ -1200,6 +1204,29 @@ export default function Terminal({ token }: Props) {
     return () => document.removeEventListener('focusin', handleFocusin)
   }, [isWidePC])
 
+  async function fetchScrollback() {
+    setScrollbackLoading(true)
+    setShowScrollback(true)
+    try {
+      const r = await fetch(
+        `/api/sessions/${activeWindowIndex}/scrollback?session=${encodeURIComponent(wsSessionKey)}&lines=3000`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      const data = await r.json()
+      setScrollbackContent(data.content || '')
+    } catch {
+      setScrollbackContent('(加载历史失败)')
+    } finally {
+      setScrollbackLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (scrollbackContent && scrollbackBottomRef.current) {
+      scrollbackBottomRef.current.scrollIntoView()
+    }
+  }, [scrollbackContent])
+
   const toolbarProps = {
     token,
     sendToWs,
@@ -1211,6 +1238,7 @@ export default function Terminal({ token }: Props) {
     onToggleSelectionMode: () => setSelectionMode(v => !v),
     onOpenSettings: () => setShowSettings(true),
     onOpenTasks: () => setShowTasks(true),
+    onOpenScrollback: fetchScrollback,
     onUpload: handleFileUpload,
     runningTaskCount,
   }
@@ -1524,6 +1552,27 @@ export default function Terminal({ token }: Props) {
           <div style={{ fontSize: 48, marginBottom: 12 }}>🖥️</div>
           <div style={{ fontSize: 16, marginBottom: 8 }}>没有活动会话</div>
           <div style={{ fontSize: 13 }}>点击「+ 新建会话」开始</div>
+        </div>
+      )}
+      {showScrollback && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: '#0f172a', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #334155', flexShrink: 0, background: '#1e293b' }}>
+            <span style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15 }}>历史记录</span>
+            <button
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
+              onClick={() => { setShowScrollback(false); setScrollbackContent('') }}
+            >×</button>
+          </div>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+            {scrollbackLoading ? (
+              <div style={{ color: '#64748b', textAlign: 'center', padding: 32 }}>加载中...</div>
+            ) : (
+              <pre style={{ margin: 0, padding: '0 12px', fontFamily: 'Menlo, Monaco, "Cascadia Code", monospace', fontSize: 13, color: '#e2e8f0', whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.5 }}>
+                {scrollbackContent}
+              </pre>
+            )}
+            <div ref={scrollbackBottomRef} />
+          </div>
         </div>
       )}
     </div>
