@@ -91,3 +91,4 @@
 | fix(toolbar): ctrl-a/ctrl-e/ctrl-z 加入出厂展开列表 | `a8c4e6b` |
 | fix(pwa): 仅缓存静态资源，跳过 index.html（修复构建后 404） | `c31cc20` |
 | fix(tasks): 恢复 profile 参数；修复通知图标/正文 | `56f226d` |
+| fix(mobile): GhostShield 全局幽灵点击防护（所有 overlay） | `ff542a0` |

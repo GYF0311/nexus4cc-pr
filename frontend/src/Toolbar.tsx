@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import GhostShield from './GhostShield'
+import useOverlayGuard from './useOverlayGuard'
 import type { Terminal } from '@xterm/xterm'
 import { KeyDef, ToolbarConfig, ALL_KEYS, FACTORY_CONFIG } from './toolbarDefaults'
 import type { ThemeMode } from './Terminal'
@@ -81,6 +82,9 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   const rootRef = useRef<HTMLDivElement>(null)
   const editScrollRef = useRef<HTMLDivElement>(null)
   const isDraggingMouse = useRef(false)
+
+  // Guard xterm textarea when editing panel is open (prevents keyboard popup)
+  useOverlayGuard(_termRef, editing)
 
   const existsUserDefault = !!localStorage.getItem(USER_DEFAULT_KEY)
   const tc = toolbarColors(themeMode)

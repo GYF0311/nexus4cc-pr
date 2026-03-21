@@ -1221,6 +1221,24 @@ export default function Terminal({ token }: Props) {
     return () => document.removeEventListener('focusin', handleFocusin)
   }, [isWidePC])
 
+  // Overlay guard: when any overlay opens, set xterm textarea to readOnly
+  // to prevent virtual keyboard from appearing when keyboard dismisses
+  const anyOverlayOpen = showSessionDrawer || showTasks || showSettings || showNewSession || showScrollback
+  useEffect(() => {
+    if (isWidePC) return
+    const ta = termRef.current?.textarea
+    if (!ta) return
+    if (anyOverlayOpen) {
+      ta.readOnly = true
+    } else {
+      // Delay restoring to avoid race with keyboard dismiss animation
+      setTimeout(() => {
+        const ta2 = termRef.current?.textarea
+        if (ta2) ta2.readOnly = false
+      }, 100)
+    }
+  }, [anyOverlayOpen, isWidePC])
+
   function closeScrollback() {
     showScrollbackRef.current = false
     overlayScrolledUpRef.current = false
@@ -1411,7 +1429,7 @@ export default function Terminal({ token }: Props) {
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401, background: 'var(--nexus-menu-bg)', borderRadius: '12px 12px 0 0', border: '1px solid var(--nexus-border)', borderBottom: 'none', maxHeight: '70vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--nexus-border)', flexShrink: 0 }}>
               <span style={{ color: 'var(--nexus-text)', fontWeight: 600, fontSize: 15 }}>会话管理</span>
-              <button style={{ background: 'transparent', border: 'none', color: 'var(--nexus-text2)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }} onPointerDown={() => { setShowSessionDrawer(false); setDrawerMenuIndex(null); setDrawerRenameIndex(null) }}>×</button>
+              <button style={{ background: 'transparent', border: 'none', color: 'var(--nexus-text2)', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }} onPointerDown={(e) => { e.preventDefault(); setShowSessionDrawer(false); setDrawerMenuIndex(null); setDrawerRenameIndex(null); (document.activeElement as HTMLElement)?.blur() }}>×</button>
             </div>
             <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
               {windows.map(win => {
