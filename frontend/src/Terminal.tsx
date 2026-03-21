@@ -455,7 +455,11 @@ export default function Terminal({ token }: Props) {
   const [showScrollback, setShowScrollback] = useState(false)
   const [scrollbackContent, setScrollbackContent] = useState('')
   const [scrollbackLoading, setScrollbackLoading] = useState(false)
-  const scrollbackBottomRef = useRef<HTMLDivElement>(null)
+  const showScrollbackRef = useRef(false)
+  const swipeUpAccumRef = useRef(0)
+  const overlayScrolledUpRef = useRef(false)
+  const scrollbackOverlayRef = useRef<HTMLDivElement>(null)
+  const triggerScrollbackRef = useRef<() => void>(() => {})
   const pausePollingRef = useRef(false)
   const activeWindowIndexRef = useRef(0)
   const windowsInitializedRef = useRef(false)
@@ -926,7 +930,6 @@ export default function Terminal({ token }: Props) {
     let touchStartX = 0
     let touchStartY = 0
     let touchLastY = 0
-    let touchScrollRemainder = 0
     let isPinching = false
     let pinchStartDist = 0
     let pinchStartFontSize = fontSize
@@ -949,7 +952,7 @@ export default function Terminal({ token }: Props) {
         touchStartX = e.touches[0].clientX
         touchStartY = e.touches[0].clientY
         touchLastY = e.touches[0].clientY
-        touchScrollRemainder = 0
+        swipeUpAccumRef.current = 0
         swipeAxis = null
       }
     }
@@ -976,26 +979,18 @@ export default function Terminal({ token }: Props) {
           const dy = Math.abs(e.touches[0].clientY - touchStartY)
           if (dx > 8 || dy > 8) swipeAxis = dx > dy ? 'horizontal' : 'vertical'
         }
-        if (swipeAxis === 'horizontal') return // clearly horizontal — don't scroll
-        const y = e.touches[0].clientY
-        const deltaY = touchLastY - y  // negative = finger DOWN, positive = finger UP
-        touchLastY = y
-        touchScrollRemainder += deltaY * 2  // ×2 speed multiplier
-        // Use container height / rows as line height; fallback to 20px
-        const lineH = container.offsetHeight > 0 && term.rows > 0
-          ? container.offsetHeight / term.rows : 20
-        const lines = Math.trunc(touchScrollRemainder / lineH)
-        if (lines !== 0) {
-          touchScrollRemainder -= lines * lineH
-          // lines < 0 (finger down) → scrollLines(neg) = scroll UP = older content ✓
-          // lines > 0 (finger up)   → scrollLines(pos) = scroll DOWN = newer content ✓
-          term.scrollLines(lines)
-          const buf = (term as any).buffer?.active
-          if (buf) {
-            userScrolledRef.current = buf.viewportY < buf.baseY
-            window.dispatchEvent(new CustomEvent('nexus:atbottom', {
-              detail: buf.viewportY >= buf.baseY
-            }))
+        if (swipeAxis === 'horizontal') return
+        if (swipeAxis === 'vertical' && !showScrollbackRef.current) {
+          const y = e.touches[0].clientY
+          const deltaY = touchLastY - y  // positive = finger UP = want older content
+          touchLastY = y
+          if (deltaY > 0) {
+            swipeUpAccumRef.current += deltaY
+            if (swipeUpAccumRef.current > 40) {
+              triggerScrollbackRef.current()
+            }
+          } else {
+            swipeUpAccumRef.current = 0
           }
         }
       }
@@ -1204,7 +1199,28 @@ export default function Terminal({ token }: Props) {
     return () => document.removeEventListener('focusin', handleFocusin)
   }, [isWidePC])
 
+  function closeScrollback() {
+    showScrollbackRef.current = false
+    overlayScrolledUpRef.current = false
+    setShowScrollback(false)
+    setScrollbackContent('')
+  }
+
+  function handleOverlayScroll(e: React.UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget
+    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 30
+    if (!atBottom) {
+      overlayScrolledUpRef.current = true
+    } else if (overlayScrolledUpRef.current) {
+      closeScrollback()
+    }
+  }
+
   async function fetchScrollback() {
+    if (showScrollbackRef.current) return // already showing
+    showScrollbackRef.current = true
+    overlayScrolledUpRef.current = false
+    swipeUpAccumRef.current = 0
     setScrollbackLoading(true)
     setShowScrollback(true)
     try {
@@ -1222,10 +1238,12 @@ export default function Terminal({ token }: Props) {
   }
 
   useEffect(() => {
-    if (scrollbackContent && scrollbackBottomRef.current) {
-      scrollbackBottomRef.current.scrollIntoView()
+    if (scrollbackContent && scrollbackOverlayRef.current) {
+      scrollbackOverlayRef.current.scrollTop = scrollbackOverlayRef.current.scrollHeight
     }
   }, [scrollbackContent])
+
+  triggerScrollbackRef.current = fetchScrollback
 
   const toolbarProps = {
     token,
@@ -1558,12 +1576,17 @@ export default function Terminal({ token }: Props) {
         <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: '#0f172a', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #334155', flexShrink: 0, background: '#1e293b' }}>
             <span style={{ color: '#e2e8f0', fontWeight: 600, fontSize: 15 }}>历史记录</span>
+            <span style={{ color: '#64748b', fontSize: 11, flex: 1, textAlign: 'center' }}>滚到底部返回终端</span>
             <button
               style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: 22, cursor: 'pointer', padding: '0 4px', lineHeight: 1 }}
-              onClick={() => { setShowScrollback(false); setScrollbackContent('') }}
+              onClick={closeScrollback}
             >×</button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+          <div
+            ref={scrollbackOverlayRef}
+            onScroll={handleOverlayScroll}
+            style={{ flex: 1, overflowY: 'auto', padding: '8px 0', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+          >
             {scrollbackLoading ? (
               <div style={{ color: '#64748b', textAlign: 'center', padding: 32 }}>加载中...</div>
             ) : (
@@ -1571,7 +1594,6 @@ export default function Terminal({ token }: Props) {
                 {scrollbackContent}
               </pre>
             )}
-            <div ref={scrollbackBottomRef} />
           </div>
         </div>
       )}
