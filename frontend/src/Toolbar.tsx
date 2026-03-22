@@ -468,7 +468,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   if (embedded) {
     const allEmbedded = [...config.pinned, ...(collapsed ? [] : config.expanded)]
     return (
-      <div ref={rootRef} style={{ borderTop: '1px solid var(--nexus-border)', flexShrink: 0 }}>
+      <div ref={rootRef} style={{ borderTop: '1px solid var(--nexus-border)', flexShrink: 0, background: 'var(--nexus-bg)' }}>
         {/* Section header */}
         <div style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', gap: 2 }}>
           <span style={{ fontSize: 10, color: 'var(--nexus-muted)', flex: 1, letterSpacing: 0.6, textTransform: 'uppercase' as const }}>快捷键</span>
