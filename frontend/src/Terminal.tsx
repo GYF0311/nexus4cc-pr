@@ -120,7 +120,8 @@ function Sidebar({
   onSwitchSession,
   onSwitch,
   onClose,
-  onAdd,
+  onNewProject,
+  onNewWindow,
   onOpenSettings,
   onOpenTasks,
   onRename,
@@ -138,7 +139,8 @@ function Sidebar({
   onSwitch: (index: number) => void
   windowOutputs: Record<number, { output: string; clients: number; idleMs: number; connected: boolean }>
   onClose: (index: number) => void
-  onAdd: () => void
+  onNewProject: () => void
+  onNewWindow: () => void
   onOpenSettings: () => void
   onOpenTasks: () => void
   onRename?: (index: number, name: string) => void
@@ -150,7 +152,22 @@ function Sidebar({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
   const [renameIndex, setRenameIndex] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
+  const [showAddMenu, setShowAddMenu] = useState(false)
   const renameInputRef = useRef<HTMLInputElement>(null)
+  const addMenuRef = useRef<HTMLDivElement>(null)
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setShowAddMenu(false)
+      }
+    }
+    if (showAddMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showAddMenu])
 
   function startRename(index: number, currentName: string) {
     setRenameIndex(index)
@@ -317,21 +334,85 @@ function Sidebar({
         flexDirection: 'column',
         gap: 4,
       }}>
-        <button
-          style={{
-            background: 'var(--nexus-accent)',
-            border: 'none',
-            borderRadius: 6,
-            color: '#fff',
-            cursor: 'pointer',
-            fontSize: 13,
-            fontWeight: 600,
-            padding: '8px 12px',
-            width: '100%',
-            textAlign: 'left',
-          }}
-          onClick={onAdd}
-        >+ 新建会话</button>
+        {/* F-19: 项目-窗口两级结构 */}
+        <div ref={addMenuRef} style={{ position: 'relative' }}>
+          <button
+            style={{
+              background: 'var(--nexus-accent)',
+              border: 'none',
+              borderRadius: 6,
+              color: '#fff',
+              cursor: 'pointer',
+              fontSize: 13,
+              fontWeight: 600,
+              padding: '8px 12px',
+              width: '100%',
+              textAlign: 'left',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+            onClick={() => setShowAddMenu(!showAddMenu)}
+          >
+            <span>+ 新建</span>
+            <span style={{ fontSize: 10, opacity: 0.8 }}>{showAddMenu ? '▲' : '▼'}</span>
+          </button>
+          {showAddMenu && (
+            <div style={{
+              position: 'absolute',
+              bottom: '100%',
+              left: 0,
+              right: 0,
+              marginBottom: 4,
+              background: 'var(--nexus-menu-bg)',
+              border: '1px solid var(--nexus-border)',
+              borderRadius: 6,
+              boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
+              zIndex: 10,
+              overflow: 'hidden',
+            }}>
+              <button
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  borderBottom: '1px solid var(--nexus-border)',
+                  color: 'var(--nexus-text)',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  padding: '10px 12px',
+                  width: '100%',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                onClick={() => { setShowAddMenu(false); onNewProject() }}
+              >
+                <span>📁</span>
+                <span>新项目（选目录）</span>
+              </button>
+              <button
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--nexus-text)',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  padding: '10px 12px',
+                  width: '100%',
+                  textAlign: 'left',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+                onClick={() => { setShowAddMenu(false); onNewWindow() }}
+              >
+                <span>➕</span>
+                <span>新窗口（同目录）</span>
+              </button>
+            </div>
+          )}
+        </div>
         <button
           style={{
             background: 'transparent',
@@ -762,16 +843,15 @@ export default function Terminal({ token }: Props) {
   async function createSession(relPath: string, shellType: 'claude' | 'bash' = 'claude', profile?: string) {
     try {
       const session = activeTmuxSessionRef.current
-      const r = await fetch('/api/sessions', {
+      // F-19: 使用新的 /api/windows endpoint，传入 rel_path 表示新项目
+      const r = await fetch(`/api/windows?session=${encodeURIComponent(session)}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rel_path: relPath, shell_type: shellType, profile, session }),
+        body: JSON.stringify({ rel_path: relPath, shell_type: shellType, profile }),
       })
       if (r.ok) {
         const { name: newWindowName } = await r.json()
-        // 等待一小段时间让 tmux 创建窗口，然后刷新列表
         await new Promise(resolve => setTimeout(resolve, 300))
-        // 获取更新后的窗口列表并切换到新窗口
         const sessionNow = activeTmuxSessionRef.current
         const listRes = await fetch(`/api/sessions?session=${encodeURIComponent(sessionNow)}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -780,7 +860,37 @@ export default function Terminal({ token }: Props) {
           const d = await listRes.json()
           const wins: TmuxWindow[] = d.windows ?? []
           setWindows(wins)
-          // 找到新窗口并切换
+          const newWin = wins.find(w => w.name === newWindowName)
+          if (newWin) {
+            attachToWindow(newWin.index)
+          }
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // F-19: 创建新窗口（继承当前项目目录）
+  async function createWindow(shellType: 'claude' | 'bash' = 'claude', profile?: string) {
+    try {
+      const session = activeTmuxSessionRef.current
+      const r = await fetch(`/api/windows?session=${encodeURIComponent(session)}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shell_type: shellType, profile }),
+      })
+      if (r.ok) {
+        const { name: newWindowName } = await r.json()
+        await new Promise(resolve => setTimeout(resolve, 300))
+        const sessionNow = activeTmuxSessionRef.current
+        const listRes = await fetch(`/api/sessions?session=${encodeURIComponent(sessionNow)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (listRes.ok) {
+          const d = await listRes.json()
+          const wins: TmuxWindow[] = d.windows ?? []
+          setWindows(wins)
           const newWin = wins.find(w => w.name === newWindowName)
           if (newWin) {
             attachToWindow(newWin.index)
@@ -799,6 +909,11 @@ export default function Terminal({ token }: Props) {
   function handleCreateSession(path: string, shellType: 'claude' | 'bash', profile?: string) {
     setShowNewSession(false)
     createSession(path, shellType, profile)
+  }
+
+  // F-19: 处理新窗口创建（使用默认配置）
+  function handleCreateWindow() {
+    createWindow('claude')
   }
 
   function handleSwitchSession(newSession: string) {
@@ -1389,7 +1504,8 @@ export default function Terminal({ token }: Props) {
               onSwitchSession={handleSwitchSession}
               onSwitch={attachToWindow}
               onClose={closeWindow}
-              onAdd={openNewSessionDialog}
+              onNewProject={openNewSessionDialog}
+              onNewWindow={handleCreateWindow}
               onOpenSettings={() => setShowSettings(true)}
               onOpenTasks={() => setShowTasks(true)}
               onRename={renameWindow}
@@ -1624,7 +1740,7 @@ export default function Terminal({ token }: Props) {
         }}>
           <div style={{ fontSize: 48, marginBottom: 12 }}>🖥️</div>
           <div style={{ fontSize: 16, marginBottom: 8 }}>没有活动会话</div>
-          <div style={{ fontSize: 13 }}>点击「+ 新建会话」开始</div>
+          <div style={{ fontSize: 13 }}>点击「+ 新建」开始</div>
         </div>
       )}
       {showScrollback && (() => {

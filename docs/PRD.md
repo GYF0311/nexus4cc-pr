@@ -57,6 +57,14 @@
 | F-16 | Telegram Bot 频道 | 外出时在 Telegram 给 AI 下任务，结果回传聊天；调用 `/api/tasks` |
 | F-17 | 多输入渠道统一路由 | 任意渠道（Web/IM/CLI）的 prompt 统一进入 task 队列，结果同步回发起方 |
 
+### Nice（v4：直觉化项目管理）
+
+> 对应北极星「轴一：零配置启动」——消灭一切不必要的决策步骤
+
+| ID | Feature | 验收标准 |
+|---|---|---|
+| **F-19** | **项目-窗口两级结构** | **项目 = 目录，窗口 = 同目录标签**。新建项目时选目录；新窗口自动继承当前目录；消灭「每次新建都要选目录」的重复操作 |
+
 ---
 
 ## Feature Detail: v3 非交互派发（F-13/F-16/F-17）
@@ -76,6 +84,36 @@ POST /api/webhooks/telegram
 ```
 
 **设计原则**：任务派发与交互终端解耦——交互 PTY 继续用于实时 claude 对话，tasks API 用于异步一次性任务，两者共存，各司其职。
+
+---
+
+## Feature Detail: 项目-窗口两级结构（F-19）
+
+**问题**：当前每次新建 window 都要选目录，而用户心智模型是「项目=目录，窗口=同目录下的多个标签」。
+
+**解法**：利用 tmux session 环境变量存储项目目录，实现「新建项目选目录，新建窗口自动继承」。
+
+```
+POST /api/windows
+  body: { rel_path?, shell_type?, profile? }
+
+  场景 1 - 新项目（提供 rel_path）:
+    → tmux set-environment NEXUS_CWD <dir>
+    → tmux new-window -c "$dir"
+
+  场景 2 - 新窗口（不提供 rel_path）:
+    → cwd=$(tmux show-environment NEXUS_CWD | cut -d= -f2)
+    → tmux new-window -c "$cwd"
+```
+
+**交互**：
+- Sidebar 「+」按钮拆分为二级菜单：「📁 新项目」/「➕ 新窗口」
+- 「新项目」→ 弹出 WorkspaceSelector 选目录
+- 「新窗口」→ 直接创建，继承当前项目目录
+
+**心智模型**：
+- 项目 = 目录（首次需要指定）
+- 窗口 = 同目录下的多个终端标签（自动继承目录）
 
 ---
 

@@ -88,6 +88,80 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+// POST /api/windows — F-19: 项目-窗口两级结构
+// body: { rel_path?, shell_type?, profile? }
+// - 提供 rel_path: 设置 NEXUS_CWD 并在此目录创建窗口（新项目）
+// - 不提供 rel_path: 读取 NEXUS_CWD 并在此目录创建窗口（新窗口）
+app.post('/api/windows', authMiddleware, (req, res) => {
+  const { rel_path, shell_type = 'claude', profile } = req.body || {};
+  const tmuxSession = req.query.session || TMUX_SESSION;
+
+  let cwd;
+  if (rel_path) {
+    // 新项目：设置 NEXUS_CWD
+    cwd = rel_path.startsWith('/') ? rel_path : `${WORKSPACE_ROOT}/${rel_path}`;
+    try {
+      execSync(`tmux set-environment -t ${tmuxSession} NEXUS_CWD "${cwd}"`);
+    } catch (err) {
+      return res.status(500).json({ error: 'failed to set NEXUS_CWD: ' + err.message });
+    }
+  } else {
+    // 新窗口：读取 NEXUS_CWD
+    try {
+      const envOutput = execSync(`tmux show-environment -t ${tmuxSession} NEXUS_CWD 2>/dev/null`).toString().trim();
+      const match = envOutput.match(/^NEXUS_CWD=(.+)$/);
+      cwd = match ? match[1] : WORKSPACE_ROOT;
+    } catch {
+      cwd = WORKSPACE_ROOT;
+    }
+  }
+
+  // 窗口名称基于目录
+  const name = cwd.replace(/^\/+|\/+$/g, '').replace(/\//g, '-') || 'window';
+
+  // 构建 shell 命令
+  const proxyVars = {
+    ...(process.env.HTTP_PROXY  ? { HTTP_PROXY:  process.env.HTTP_PROXY  } : {}),
+    ...(process.env.HTTPS_PROXY ? { HTTPS_PROXY: process.env.HTTPS_PROXY } : {}),
+    ...(process.env.ALL_PROXY   ? { ALL_PROXY:   process.env.ALL_PROXY   } : {}),
+    ...(process.env.http_proxy  ? { http_proxy:  process.env.http_proxy  } : {}),
+    ...(process.env.https_proxy ? { https_proxy: process.env.https_proxy } : {}),
+    ...(CLAUDE_PROXY ? { ALL_PROXY: CLAUDE_PROXY, HTTPS_PROXY: CLAUDE_PROXY, HTTP_PROXY: CLAUDE_PROXY, NEXUS_PROXY: CLAUDE_PROXY } : {}),
+  };
+  const proxyExports = Object.entries(proxyVars).map(([k, v]) => `export ${k}='${v}'`).join('; ');
+  const proxyPrefix = proxyExports ? `${proxyExports}; ` : '';
+
+  let shellCmd;
+  if (shell_type === 'bash') {
+    shellCmd = `${proxyPrefix}exec zsh -i`;
+  } else {
+    if (profile) {
+      const runScript = join(__dirname, 'nexus-run-claude.sh');
+      shellCmd = `${proxyPrefix}bash "${runScript}" ${profile} ${cwd}`;
+    } else {
+      shellCmd = `${proxyPrefix}claude --dangerously-skip-permissions; exec zsh -i`;
+    }
+  }
+
+  // 确保 tmux session 存在
+  try {
+    execSync(`tmux has-session -t ${tmuxSession} 2>/dev/null || tmux new-session -d -s ${tmuxSession} -n shell "zsh"`);
+  } catch {}
+
+  // 将代理变量设置到 tmux session 环境
+  for (const [key, value] of Object.entries(proxyVars)) {
+    try {
+      execSync(`tmux set-environment -t ${tmuxSession} ${key} "${value}" 2>/dev/null`);
+    } catch {}
+  }
+
+  const cmd = `tmux new-window -t ${tmuxSession} -c "${cwd}" -n "${name}" "${shellCmd}"`;
+  exec(cmd, (err) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ name, cwd, shell_type, profile: profile || null, session: tmuxSession });
+  });
+});
+
 // POST /api/sessions — 在 tmux 中创建新 window
 // body: { rel_path, shell_type?, profile?, session? }
 //   shell_type: 'claude' | 'bash' (default: 'claude')
