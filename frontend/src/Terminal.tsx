@@ -407,7 +407,7 @@ export default function Terminal({ token }: Props) {
   const [showGuide, setShowGuide] = useState(() => localStorage.getItem('nexus_guide_seen') !== 'true')
   const [isScrolledUp, setIsScrolledUp] = useState(false)
   const toolbarWrapRef = useRef<HTMLDivElement>(null)
-  const [toolbarHeight, setToolbarHeight] = useState(0)
+  const toolbarHeightRef = useRef(0)
   const keyboardVisibleRef = useRef(false)
   // Viewport height is handled by CSS 100dvh, not JS
   const [drawerMenuIndex, setDrawerMenuIndex] = useState<number | null>(null)
@@ -558,6 +558,100 @@ export default function Terminal({ token }: Props) {
     termRef.current?.scrollToBottom()
     userScrolledRef.current = false
     setIsScrolledUp(false)
+  }, [])
+
+  const fitTerminal = useCallback(() => {
+    const term = termRef.current
+    const fitAddon = fitAddonRef.current
+    const container = containerRef.current
+    if (!term || !fitAddon || !container) return
+
+    // 延迟执行，等待任何 CSS transition 完成
+    setTimeout(() => {
+      // 强制重新计算布局
+      void container.offsetHeight
+
+      // 执行 fit
+      fitAddon.fit()
+
+      // 发送新的尺寸到后端
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+      }
+
+      // 滚动到底部
+      if (!userScrolledRef.current) {
+        term.scrollToBottom()
+      }
+    }, 150)
+  }, [])
+
+  // 简化的 resize 处理：只在必要时执行，避免过度工程化
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    let rafId: number | null = null
+    let debounceTimer: number | null = null
+    let lastWidth = 0
+    let lastHeight = 0
+
+    function doResize() {
+      const term = termRef.current
+      const fitAddon = fitAddonRef.current
+      const containerEl = containerRef.current
+      if (!term || !fitAddon || !containerEl) return
+
+      // 获取容器实际渲染尺寸
+      const rect = containerEl.getBoundingClientRect()
+
+      // 如果变化太小，忽略（避免微抖动）
+      const wDelta = Math.abs(rect.width - lastWidth)
+      const hDelta = Math.abs(rect.height - lastHeight)
+      if (wDelta < 2 && hDelta < 2) return
+
+      lastWidth = rect.width
+      lastHeight = rect.height
+
+      // 清除任何待执行的 raf 和 timer
+      if (rafId) cancelAnimationFrame(rafId)
+      if (debounceTimer) window.clearTimeout(debounceTimer)
+
+      // Debounce: 延迟执行，确保布局稳定（特别是工具栏动画结束后）
+      debounceTimer = window.setTimeout(() => {
+        rafId = requestAnimationFrame(() => {
+          fitAddon.fit()
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            wsRef.current.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
+          }
+          if (!userScrolledRef.current) term.scrollToBottom()
+          rafId = null
+        })
+      }, 150) // 150ms debounce 覆盖 CSS transition
+    }
+
+    // 使用 ResizeObserver 监听容器变化（唯一来源）
+    const ro = new ResizeObserver(doResize)
+    ro.observe(container)
+
+    // 只在 orientation change 时额外处理
+    function onOrientationChange() {
+      // 重置缓存，强制重新计算
+      lastWidth = 0
+      lastHeight = 0
+      setTimeout(doResize, 300)
+    }
+    window.addEventListener('orientationchange', onOrientationChange)
+
+    // 初始执行（延迟确保布局稳定）
+    setTimeout(doResize, 100)
+
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('orientationchange', onOrientationChange)
+      if (rafId) cancelAnimationFrame(rafId)
+      if (debounceTimer) window.clearTimeout(debounceTimer)
+    }
   }, [])
 
   async function fetchWindows() {
@@ -976,14 +1070,12 @@ export default function Terminal({ token }: Props) {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }))
       }
+      if (!userScrolledRef.current) term.scrollToBottom()
     }
 
     function onOrientationChange() {
       setTimeout(sendResize, 300)
     }
-
-    const resizeObserver = new ResizeObserver(sendResize)
-    resizeObserver.observe(container)
     window.addEventListener('orientationchange', onOrientationChange)
 
     // Re-fit when tab/PWA returns to foreground
@@ -994,7 +1086,6 @@ export default function Terminal({ token }: Props) {
     window.addEventListener('pageshow', sendResize)
 
     return () => {
-      resizeObserver.disconnect()
       window.removeEventListener('orientationchange', onOrientationChange)
       document.removeEventListener('visibilitychange', onVisibilityChange)
       window.removeEventListener('pageshow', sendResize)
@@ -1171,13 +1262,15 @@ export default function Terminal({ token }: Props) {
     return () => document.removeEventListener('focusin', handleFocusin)
   }, [isWidePC])
 
-  // Track toolbar height for FAB constraint
+  // Track toolbar height for FAB constraint (using ref to avoid re-render loop)
   useEffect(() => {
     const el = toolbarWrapRef.current
     if (!el) return
-    const ro = new ResizeObserver(() => setToolbarHeight(el.offsetHeight))
+    const ro = new ResizeObserver(() => {
+      toolbarHeightRef.current = el.offsetHeight
+    })
     ro.observe(el)
-    setToolbarHeight(el.offsetHeight)
+    toolbarHeightRef.current = el.offsetHeight
     return () => ro.disconnect()
   }, [])
 
@@ -1249,6 +1342,7 @@ export default function Terminal({ token }: Props) {
     token,
     sendToWs,
     scrollToBottom,
+    onFitTerminal: fitTerminal,
     termRef,
     themeMode,
     onToggleTheme: toggleTheme,
@@ -1337,7 +1431,7 @@ export default function Terminal({ token }: Props) {
               <button style={styles.scrollBtn} onClick={scrollToBottom} title="滚到底部"><Icon name="arrowDown" size={16} /></button>
             )}
           </div>
-          <SessionFAB onClick={() => setShowSessionDrawer(true)} windowCount={windows.length} bottomInset={toolbarHeight} />
+          <SessionFAB onClick={() => setShowSessionDrawer(true)} windowCount={windows.length} bottomInset={toolbarHeightRef.current} />
           <div ref={toolbarWrapRef}><Toolbar {...toolbarProps} /></div>
         </div>
       )}
