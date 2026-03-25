@@ -64,6 +64,7 @@
 | ID | Feature | 验收标准 |
 |---|---|---|
 | **F-19** | **项目-窗口两级结构** | **项目 = 目录，窗口 = 同目录标签**。新建项目时选目录；新窗口自动继承当前目录；消灭「每次新建都要选目录」的重复操作 |
+| **F-20** | **统一会话管理界面** | **借鉴 Slack Workspace/Channel 模式**：项目列表（下部）+ 窗口列表（上部），新建按钮分区放置，视觉层次清晰 |
 
 ---
 
@@ -114,6 +115,212 @@ POST /api/windows
 **心智模型**：
 - 项目 = 目录（首次需要指定）
 - 窗口 = 同目录下的多个终端标签（自动继承目录）
+
+---
+
+## Feature Detail: 统一会话管理界面（F-20）
+
+**核心映射**：直接使用 tmux 原生概念，前端映射更易理解
+- **tmux session** → **Project**（工作目录，环境隔离）
+- **tmux window** → **Channel**（终端标签，共享目录）
+
+**设计灵感**：Slack 的 Workspace/Channel 两层导航结构
+- Channel 列表（上部）：当前 Project 下的多个终端窗口
+- Project 列表（下部）：不同的工作目录（每个对应一个 tmux session）
+
+### 界面布局
+
+```
+┌─────────────────────────────┐
+│  会话管理              [×]   │
+├─────────────────────────────┤
+│                             │
+│  📂 nexus ~/work/nexus      │  ← 标题：当前 Project 名+路径
+│  ─────────────────────────  │
+│  #general        ●         │  ← Channel 列表（tmux windows）
+│  #backend        ○         │
+│  #test          ⏳         │
+│                             │
+│  [+ 新 Channel]            │  ← 在下方，靠近 Channel 列表
+│                             │
+│  ═════════════════════════  │  ← 粗分隔线
+│                             │
+│  📁 Projects               │
+│  ● nexus           (3)     │  ← Project 列表（tmux sessions）
+│  ○ my-app          (1)     │
+│  ○ backend-api     (2)     │
+│                             │
+│  [+ 新 Project]            │  ← 在下方，靠近 Project 列表
+│                             │
+└─────────────────────────────┘
+```
+
+### 关键设计决策
+
+| 概念 | 对应 | 说明 |
+|------|------|------|
+| Project | tmux session | 每个 session 独立环境变量，有自己的 NEXUS_CWD |
+| Channel | tmux window | 同 session 内的多个窗口，共享工作目录 |
+| 激活态 | active session/window | 高亮显示当前所在的 project 和 channel |
+
+### 状态指示
+
+```
+Channel 列表项（带 # 前缀）：
+  #general      ●    ← 绿色点 = 运行中
+  #backend      ○    ← 灰色点 = 空闲
+  #deploy      ⏳    ← 黄色点 = 等待输入
+  #shell       💤    ← 灰色 = shell 状态
+
+Project 列表项：
+  ● nexus      (3)   ← 蓝色高亮 = 当前激活，(3)=3个channel
+  ○ my-app     (1)   ← 未激活，有1个channel
+  ○ backend-api (2)  ← 未激活，有2个channel
+  ○ legacy          ← 无括号 = 该session没有窗口（异常）
+```
+
+### API 设计（简化版）
+
+```
+GET  /api/projects                → 列出所有 tmux sessions（Project 列表）
+GET  /api/projects/:name/channels → 列出指定 session 的所有 windows（Channel 列表）
+
+POST /api/projects                → 新建 Project
+  body: { name, path, shell_type, profile? }
+  → tmux new-session -d -s <name> -c <path>
+  → tmux set-environment NEXUS_CWD <path>
+
+POST /api/projects/:name/channels → 新建 Channel
+  body: { shell_type, profile? }
+  → 在当前 session 内 tmux new-window -c "$NEXUS_CWD"
+
+POST /api/projects/:name/activate → 切换到指定 Project
+  → 切换 active tmux session（attach-client 或设置 target）
+
+POST /api/channels/:index/attach  → 切换到指定 Channel（已有接口）
+DELETE /api/channels/:index       → 关闭 Channel（已有接口）
+```
+
+### 交互流程
+
+**1. 新建 Project**
+```
+点击「+ 新 Project」
+  → 弹出 WorkspaceSelector 选择目录
+  → 用户输入 Project 名称（默认目录名）
+  → POST /api/projects { name: "my-app", path: "/home/libra/work/my-app" }
+  → tmux new-session -d -s my-app -c /home/libra/work/my-app
+  → tmux set-environment -t my-app NEXUS_CWD /home/libra/work/my-app
+  → 在该 session 创建第一个 window（自动命名为 #general 或目录名）
+  → 自动切换到新 Project（Project 列表更新，Channel 列表加载）
+```
+
+**2. 新建 Channel**
+```
+点击「+ 新 Channel」
+  → 检查当前是否有激活 Project
+  → POST /api/projects/:name/channels { shell_type, profile }
+  → 在当前 session 内创建新 window
+  → 自动继承该 session 的 NEXUS_CWD
+  → Channel 列表更新，自动切换到新 Channel
+```
+
+**3. 切换 Project**
+```
+点击 Project 列表中的某项
+  → 设置该 session 为 active
+  → Channel 列表区域刷新：显示该 Project 的所有 Channel
+  → 自动切换到该 Project 的 active window（或第一个 window）
+  → 终端 WebSocket 重连到新的 session:window
+```
+
+**4. 切换 Channel**
+```
+点击 Channel 列表中的某项
+  → POST /api/channels/:index/attach
+  → 同现有行为：切换到该 window
+```
+
+### Channel 命名规则
+
+```
+第一个 Channel（创建 Project 时）：
+  - 默认：目录名（如 nexus）
+  - 或：#general
+
+后续 Channels：
+  - 默认：目录名-序号（如 nexus-1, nexus-2）
+  - 用户可重命名（重命名 tmux window）
+```
+
+### 空状态处理
+
+**无任何 Project 时：**
+```
+Channel 列表区域：
+  「没有活跃的 Project」
+
+Project 列表区域：
+  「暂无 Projects」
+  [+ 创建第一个 Project]
+```
+
+**当前 Project 无 Channel（异常情况）：**
+```
+Channel 列表区域：
+  "📂 nexus ~/work/nexus"
+  「该 Project 没有 Channel」
+  [+ 创建第一个 Channel]
+```
+
+### 向后兼容
+
+- 现有 tmux session 直接显示为 Projects（name 作为 project name）
+- 现有 windows 显示为 Channels
+- 首次打开界面时，为当前 session 尝试读取 NEXUS_CWD
+  - 如果未设置，提示用户「为当前 Project 设置工作目录」
+  - 或自动设置为 WORKSPACE_ROOT
+
+### 视觉设计
+
+```css
+/* Channel 列表区域（上部）*/
+- 标题栏："📂 {project.name} {cwd路径}"（cwd 用灰色小字）
+- Channel 项："#{name}" 前缀（Slack 风格）
+- 状态点：跟在名字后面
+- +按钮：在区域底部，样式与列表项对齐
+
+/* Project 列表区域（下部）*/
+- 标题栏："📁 Projects"
+- 背景：var(--nexus-bg2) - 稍暗，与 Channel 区形成层次
+- Project 项：简洁显示，名称 + 右侧 channel 计数
+- +按钮：在区域底部
+
+/* 分隔线 */
+- Channel 区标题下：1px solid var(--nexus-border)
+- 两区域之间：2px solid var(--nexus-border)
+```
+
+### 数据结构（前端状态）
+
+```typescript
+// 不再需要独立的 projects.json
+// 直接从 tmux 读取
+
+interface Project {
+  name: string;           // tmux session name
+  path: string;           // NEXUS_CWD (tmux show-environment)
+  active: boolean;        // 是否是当前 active session
+  channelCount: number;   // window 数量
+}
+
+interface Channel {
+  index: number;          // tmux window index
+  name: string;           // tmux window name
+  active: boolean;        // 是否是该 session 的 active window
+  status: 'running' | 'idle' | 'waiting' | 'shell'; // 状态推断
+}
+```
 
 ---
 

@@ -10,6 +10,7 @@ import { Icon } from './icons'
 import { getWindowStatus, STATUS_DOT_COLOR, STATUS_DOT_TITLE } from './windowStatus'
 
 const SessionManager = lazy(() => import('./SessionManager'))
+const SessionManagerV2 = lazy(() => import('./SessionManagerV2'))
 const WorkspaceSelector = lazy(() => import('./WorkspaceSelector'))
 const TaskPanel = lazy(() => import('./TaskPanel'))
 
@@ -456,6 +457,7 @@ export default function Terminal({ token }: Props) {
   const [windows, setWindows] = useState<TmuxWindow[]>([])
   const [activeWindowIndex, setActiveWindowIndex] = useState(() => parseInt(localStorage.getItem(WINDOW_KEY) || '0', 10))
   const [showSettings, setShowSettings] = useState(false)
+  const [showSessionManagerV2, setShowSessionManagerV2] = useState(false)
   const [showNewSession, setShowNewSession] = useState(false)
   const [showSessionDrawer, setShowSessionDrawer] = useState(false)
   const [themeMode, setThemeMode] = useState<ThemeMode>(getInitialTheme)
@@ -916,17 +918,22 @@ export default function Terminal({ token }: Props) {
     createWindow('claude')
   }
 
-  function handleSwitchSession(newSession: string) {
+  function handleSwitchSession(newSession: string, lastChannel?: number) {
     localStorage.setItem('nexus_session', newSession)
     // 同步更新 ref，确保 fetchWindows 能立即读到新 session
     activeTmuxSessionRef.current = newSession
     setActiveTmuxSession(newSession)
     // 强制 WebSocket 重新连接（即使 activeWindowIndex 没变）
     setWsSessionKey(newSession)
-    // 重置窗口状态
+    // 重置窗口状态，但如果有 lastChannel 则使用它
     setWindows([])
-    setActiveWindowIndex(0)
-    localStorage.removeItem(WINDOW_KEY)
+    if (lastChannel !== undefined && lastChannel !== null) {
+      setActiveWindowIndex(lastChannel)
+      localStorage.setItem(WINDOW_KEY, String(lastChannel))
+    } else {
+      setActiveWindowIndex(0)
+      localStorage.removeItem(WINDOW_KEY)
+    }
     windowsInitializedRef.current = false
     windowsLoadedRef.current = false
     setWindowsLoaded(false)
@@ -1390,7 +1397,7 @@ export default function Terminal({ token }: Props) {
 
   // Overlay guard: when any overlay opens, set xterm textarea to readOnly
   // to prevent virtual keyboard from appearing when keyboard dismisses
-  const anyOverlayOpen = showSessionDrawer || showTasks || showSettings || showNewSession || showScrollback
+  const anyOverlayOpen = showSessionDrawer || showTasks || showSettings || showNewSession || showScrollback || showSessionManagerV2
   useEffect(() => {
     if (isWidePC) return
     const ta = termRef.current?.textarea
@@ -1458,7 +1465,7 @@ export default function Terminal({ token }: Props) {
     termRef,
     themeMode,
     onToggleTheme: toggleTheme,
-    onOpenSettings: () => setShowSettings(true),
+    onOpenSettings: () => setShowSessionManagerV2(v => !v),
     onOpenTasks: () => setShowTasks(true),
     onUpload: handleFileUpload,
     onUploadFile: uploadFile,
@@ -1506,7 +1513,7 @@ export default function Terminal({ token }: Props) {
               onClose={closeWindow}
               onNewProject={openNewSessionDialog}
               onNewWindow={handleCreateWindow}
-              onOpenSettings={() => setShowSettings(true)}
+              onOpenSettings={() => setShowSessionManagerV2(true)}
               onOpenTasks={() => setShowTasks(true)}
               onRename={renameWindow}
               onFocusTerm={() => termRef.current?.textarea?.focus()}
@@ -1544,7 +1551,7 @@ export default function Terminal({ token }: Props) {
               <button style={styles.scrollBtn} onClick={scrollToBottom} title="滚到底部"><Icon name="arrowDown" size={16} /></button>
             )}
           </div>
-          <SessionFAB onClick={() => setShowSessionDrawer(true)} windowCount={windows.length} bottomInset={toolbarHeightRef.current} />
+          <SessionFAB onClick={() => setShowSessionManagerV2(v => !v)} windowCount={windows.length} bottomInset={toolbarHeightRef.current} />
           <div ref={toolbarWrapRef}><Toolbar {...toolbarProps} /></div>
         </div>
       )}
@@ -1666,6 +1673,20 @@ export default function Terminal({ token }: Props) {
           <SessionManager
             token={token}
             onClose={() => setShowSettings(false)}
+          />
+        </Suspense>
+      )}
+      {showSessionManagerV2 && (
+        <Suspense fallback={null}>
+          <SessionManagerV2
+            token={token}
+            currentProject={activeTmuxSession}
+            currentChannelIndex={activeWindowIndex}
+            onClose={() => setShowSessionManagerV2(false)}
+            onSwitchProject={handleSwitchSession}
+            onSwitchChannel={attachToWindow}
+            onNewProject={() => { setShowSessionManagerV2(false); openNewSessionDialog() }}
+            onNewChannel={() => { setShowSessionManagerV2(false); handleCreateWindow() }}
           />
         </Suspense>
       )}

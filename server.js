@@ -403,6 +403,198 @@ app.get('/api/tmux-sessions', authMiddleware, (req, res) => {
   })
 })
 
+// ========== F-20: Project-Channel API ==========
+// Project = tmux session, Channel = tmux window (within a session)
+
+// GET /api/projects — 列出所有 Projects（tmux sessions）
+app.get('/api/projects', authMiddleware, (req, res) => {
+  exec('tmux list-sessions -F "#{session_name}|#{session_windows}|#{session_attached}"', (err, stdout) => {
+    if (err) return res.json([])
+    const lines = stdout.trim().split('\n').filter(Boolean)
+    const projects = lines.map(line => {
+      const [name, windows, attached] = line.split('|')
+      // 尝试读取 NEXUS_CWD
+      let path = ''
+      try {
+        const envOutput = execSync(`tmux show-environment -t ${name} NEXUS_CWD 2>/dev/null`).toString().trim()
+        const match = envOutput.match(/^NEXUS_CWD=(.+)$/)
+        if (match) path = match[1]
+      } catch {}
+      return {
+        name,
+        path: path || WORKSPACE_ROOT,
+        active: name === TMUX_SESSION,
+        channelCount: Number(windows) || 0
+      }
+    })
+    res.json(projects)
+  })
+})
+
+// GET /api/projects/:name/channels — 列出指定 Project 的 Channels（windows）
+app.get('/api/projects/:name/channels', authMiddleware, (req, res) => {
+  const sessionName = req.params.name
+  exec(
+    `tmux list-windows -t ${sessionName} -F "#{window_index}|#{window_name}|#{window_active}|#{pane_current_path}"`,
+    (err, stdout) => {
+      if (err) return res.status(500).json({ error: err.message })
+      const lines = stdout.trim().split('\n').filter(Boolean)
+      const channels = lines.map(line => {
+        const parts = line.split('|')
+        const index = Number(parts[0])
+        const name = parts[1]
+        const active = parts[2]?.trim() === '1'
+        const cwd = parts.slice(3).join(':') || ''
+        return { index, name, active, cwd }
+      })
+      res.json({ project: sessionName, channels })
+    }
+  )
+})
+
+// POST /api/projects — 新建 Project（创建 tmux session）
+app.post('/api/projects', authMiddleware, (req, res) => {
+  const { name, path, shell_type = 'claude', profile } = req.body || {}
+  if (!name) return res.status(400).json({ error: 'name required' })
+  if (!path) return res.status(400).json({ error: 'path required' })
+
+  const safeName = name.replace(/[^a-zA-Z0-9._-]/g, '-').substring(0, 50)
+  const cwd = path.startsWith('/') ? path : `${WORKSPACE_ROOT}/${path}`
+
+  // 构建 shell 命令
+  const proxyVars = {
+    ...(process.env.HTTP_PROXY  ? { HTTP_PROXY:  process.env.HTTP_PROXY  } : {}),
+    ...(process.env.HTTPS_PROXY ? { HTTPS_PROXY: process.env.HTTPS_PROXY } : {}),
+    ...(process.env.ALL_PROXY   ? { ALL_PROXY:   process.env.ALL_PROXY   } : {}),
+    ...(process.env.http_proxy  ? { http_proxy:  process.env.http_proxy  } : {}),
+    ...(process.env.https_proxy ? { https_proxy: process.env.https_proxy } : {}),
+    ...(CLAUDE_PROXY ? { ALL_PROXY: CLAUDE_PROXY, HTTPS_PROXY: CLAUDE_PROXY, HTTP_PROXY: CLAUDE_PROXY, NEXUS_PROXY: CLAUDE_PROXY } : {}),
+  }
+  const proxyExports = Object.entries(proxyVars).map(([k, v]) => `export ${k}='${v}'`).join('; ')
+  const proxyPrefix = proxyExports ? `${proxyExports}; ` : ''
+
+  let shellCmd
+  if (shell_type === 'bash') {
+    shellCmd = `${proxyPrefix}exec zsh -i`
+  } else {
+    if (profile) {
+      const runScript = join(__dirname, 'nexus-run-claude.sh')
+      shellCmd = `${proxyPrefix}bash "${runScript}" ${profile} ${cwd}`
+    } else {
+      shellCmd = `${proxyPrefix}claude --dangerously-skip-permissions; exec zsh -i`
+    }
+  }
+
+  // 创建 tmux session（如果不存在）
+  try {
+    execSync(`tmux has-session -t ${safeName} 2>/dev/null || tmux new-session -d -s ${safeName} -n "${safeName}" -c "${cwd}" "${shellCmd}"`)
+    // 设置 NEXUS_CWD
+    execSync(`tmux set-environment -t ${safeName} NEXUS_CWD "${cwd}"`)
+    // 设置代理变量
+    for (const [key, value] of Object.entries(proxyVars)) {
+      try { execSync(`tmux set-environment -t ${safeName} ${key} "${value}" 2>/dev/null`) } catch {}
+    }
+  } catch (err) {
+    return res.status(500).json({ error: 'failed to create project: ' + err.message })
+  }
+
+  res.json({ name: safeName, path: cwd, shell_type, profile: profile || null })
+})
+
+// POST /api/projects/:name/channels — 在指定 Project 中新建 Channel（window）
+app.post('/api/projects/:name/channels', authMiddleware, (req, res) => {
+  const sessionName = req.params.name
+  const { shell_type = 'claude', profile } = req.body || {}
+
+  // 读取该 session 的 NEXUS_CWD
+  let cwd = WORKSPACE_ROOT
+  try {
+    const envOutput = execSync(`tmux show-environment -t ${sessionName} NEXUS_CWD 2>/dev/null`).toString().trim()
+    const match = envOutput.match(/^NEXUS_CWD=(.+)$/)
+    if (match) cwd = match[1]
+  } catch {}
+
+  // Channel 命名：目录名-序号
+  const baseName = cwd.replace(/^\/+|\/+$/g, '').split('/').pop() || 'channel'
+  let channelName = baseName
+  try {
+    const existing = execSync(`tmux list-windows -t ${sessionName} -F "#{window_name}"`).toString().trim().split('\n')
+    let counter = 1
+    while (existing.includes(channelName)) {
+      channelName = `${baseName}-${counter++}`
+    }
+  } catch {}
+
+  // 构建 shell 命令
+  const proxyVars = {
+    ...(process.env.HTTP_PROXY  ? { HTTP_PROXY:  process.env.HTTP_PROXY  } : {}),
+    ...(process.env.HTTPS_PROXY ? { HTTPS_PROXY: process.env.HTTPS_PROXY } : {}),
+    ...(process.env.ALL_PROXY   ? { ALL_PROXY:   process.env.ALL_PROXY   } : {}),
+    ...(process.env.http_proxy  ? { http_proxy:  process.env.http_proxy  } : {}),
+    ...(process.env.https_proxy ? { https_proxy: process.env.https_proxy } : {}),
+    ...(CLAUDE_PROXY ? { ALL_PROXY: CLAUDE_PROXY, HTTPS_PROXY: CLAUDE_PROXY, HTTP_PROXY: CLAUDE_PROXY, NEXUS_PROXY: CLAUDE_PROXY } : {}),
+  }
+  const proxyExports = Object.entries(proxyVars).map(([k, v]) => `export ${k}='${v}'`).join('; ')
+  const proxyPrefix = proxyExports ? `${proxyExports}; ` : ''
+
+  let shellCmd
+  if (shell_type === 'bash') {
+    shellCmd = `${proxyPrefix}exec zsh -i`
+  } else {
+    if (profile) {
+      const runScript = join(__dirname, 'nexus-run-claude.sh')
+      shellCmd = `${proxyPrefix}bash "${runScript}" ${profile} ${cwd}`
+    } else {
+      shellCmd = `${proxyPrefix}claude --dangerously-skip-permissions; exec zsh -i`
+    }
+  }
+
+  // 确保 session 存在
+  try {
+    execSync(`tmux has-session -t ${sessionName} 2>/dev/null || tmux new-session -d -s ${sessionName} -n shell "zsh"`)
+  } catch {}
+
+  // 创建新 window
+  const cmd = `tmux new-window -t ${sessionName} -c "${cwd}" -n "${channelName}" "${shellCmd}"`
+  exec(cmd, (err) => {
+    if (err) return res.status(500).json({ error: err.message })
+    res.json({ name: channelName, cwd, shell_type, profile: profile || null, project: sessionName })
+  })
+})
+
+// POST /api/projects/:name/activate — 切换到指定 Project（设置为目标 session）
+app.post('/api/projects/:name/activate', authMiddleware, (req, res) => {
+  const sessionName = req.params.name
+  // 验证 session 存在
+  try {
+    execSync(`tmux has-session -t ${sessionName}`)
+  } catch {
+    return res.status(404).json({ error: 'project not found' })
+  }
+  // 读取该 session 最后激活的 channel
+  let lastChannel = null
+  try {
+    const envOutput = execSync(`tmux show-environment -t ${sessionName} NEXUS_LAST_CHANNEL 2>/dev/null`).toString().trim()
+    const match = envOutput.match(/^NEXUS_LAST_CHANNEL=(\d+)$/)
+    if (match) lastChannel = parseInt(match[1], 10)
+  } catch {}
+  // 验证 channel 是否存在，不存在则返回 null（前端会用第一个）
+  if (lastChannel !== null) {
+    try {
+      const windows = execSync(`tmux list-windows -t ${sessionName} -F "#I"`).toString().trim().split('\n')
+      if (!windows.includes(String(lastChannel))) {
+        lastChannel = null
+      }
+    } catch {
+      lastChannel = null
+    }
+  }
+  // 返回 session 信息，前端据此切换 WebSocket 连接
+  res.json({ active: true, project: sessionName, lastChannel })
+})
+
+// ================================================
+
 // GET /api/sessions — 列出 tmux 会话的所有窗口
 app.get('/api/sessions', authMiddleware, (req, res) => {
   const session = req.query.session || TMUX_SESSION
@@ -450,6 +642,10 @@ app.post('/api/sessions/:id/attach', authMiddleware, (req, res) => {
   const session = req.query.session || TMUX_SESSION
   exec(`tmux select-window -t ${session}:${index}`, (err) => {
     if (err) return res.status(500).json({ error: err.message })
+    // 记录最后激活的 channel 到环境变量
+    try {
+      execSync(`tmux set-environment -t ${session} NEXUS_LAST_CHANNEL ${index}`)
+    } catch {}
     res.json({ ok: true })
   })
 })
