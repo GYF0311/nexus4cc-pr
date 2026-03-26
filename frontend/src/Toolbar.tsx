@@ -95,10 +95,13 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   const [showPasteBox, setShowPasteBox] = useState(false)
   const pasteBoxRef   = useRef<HTMLTextAreaElement>(null)
   const pasteFileRef  = useRef<HTMLInputElement>(null)
+  const fileInputRef  = useRef<HTMLInputElement>(null)
   const [drag, setDrag]               = useState<DragState | null>(null)
   const [savedFlash, setSavedFlash]   = useState(false)
   const [showQuickMenu, setShowQuickMenu] = useState(false)
+  const [showUploadMenu, setShowUploadMenu] = useState(false)
   const [menuPos, setMenuPos]         = useState({ bottom: 60, right: 8 })
+  const [uploadMenuPos, setUploadMenuPos] = useState({ bottom: 60, right: 44 })
   const menuBtnRef                    = useRef<HTMLButtonElement>(null)
   const [isPC, setIsPC]               = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -597,6 +600,60 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
     <div ref={rootRef} style={s.container}>
       <div style={s.topBar}>
         <div style={{ flex: 1 }} />
+        {/* 上传按钮 - 显示自定义面板 */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file && onUploadFile) { onUploadFile(file) }
+            e.target.value = ''
+          }}
+        />
+        <input
+          ref={pasteFileRef}
+          type="file"
+          accept="*/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file && onUploadFile) { onUploadFile(file) }
+            e.target.value = ''
+          }}
+        />
+        <button
+          style={s.iconBtn}
+          onPointerDown={(e) => {
+            e.preventDefault()
+            if (!showUploadMenu) {
+              const tbH = rootRef.current?.offsetHeight ?? 56
+              setUploadMenuPos({ bottom: tbH + 4, right: 44 })
+            }
+            setShowUploadMenu(v => !v)
+          }}
+          title="上传"
+        >
+          <Icon name="paperclip" size={18} />
+        </button>
+        {showUploadMenu && createPortal(
+          <>
+            <GhostShield />
+            <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} onPointerDown={() => setShowUploadMenu(false)} />
+            <div style={{ position: 'fixed', bottom: uploadMenuPos.bottom, right: uploadMenuPos.right, background: 'var(--nexus-menu-bg)', border: '1px solid var(--nexus-border)', borderRadius: 8, padding: '4px 0', minWidth: 120, zIndex: 400, boxShadow: '0 -4px 16px rgba(0,0,0,0.3)' }}>
+              <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); setShowUploadMenu(false) }}>
+                <Icon name="image" size={16} />
+                <span>相册</span>
+              </button>
+              <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); pasteFileRef.current?.click(); setShowUploadMenu(false) }}>
+                <Icon name="folder" size={16} />
+                <span>文件</span>
+              </button>
+            </div>
+          </>,
+          document.body
+        )}
         {/* quick menu */}
         <div style={{ position: 'relative' }}>
           <button
@@ -637,9 +694,6 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
                     <span>文件列表</span>
                   </button>
                 )}
-                <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); setShowPasteBox(true); setShowQuickMenu(false) }}>
-                  <Icon name="paperclip" size={16} /><span>粘贴 / 上传</span>
-                </button>
               </div>
             </>,
             document.body
