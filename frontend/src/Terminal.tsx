@@ -29,6 +29,7 @@ const FONT_SIZE_KEY = 'nexus_font_size'
 const THEME_KEY = 'nexus_theme'
 const WINDOW_KEY = 'nexus_window'
 const TAP_THRESHOLD = 8
+const MAX_UPLOAD_NOTIFICATIONS = 5
 
 export type ThemeMode = 'dark' | 'light'
 
@@ -697,6 +698,7 @@ export default function Terminal({ token }: Props) {
   const [drawerRenameValue, setDrawerRenameValue] = useState('')
   // Toolbar 展开状态（移动端点击空白区域时收起）
   const [toolbarCollapsed, setToolbarCollapsed] = useState<boolean | undefined>(undefined)
+  const [uploadNotifications, setUploadNotifications] = useState<Array<{ id: string; filename: string; path: string }>>([])
 
   // F-18: 多 tmux session 支持
   const [tmuxSessions, setTmuxSessions] = useState<string[]>([])
@@ -775,6 +777,33 @@ export default function Terminal({ token }: Props) {
     setThemeMode(newMode)
     applyTheme(newMode)
   }, [themeMode, applyTheme])
+
+  const addUploadNotification = useCallback((filename: string, path: string) => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+    setUploadNotifications(prev => {
+      const next = [{ id, filename, path }, ...prev]
+      return next.slice(0, MAX_UPLOAD_NOTIFICATIONS)
+    })
+  }, [])
+
+  const removeUploadNotification = useCallback((id: string) => {
+    setUploadNotifications(prev => prev.filter(n => n.id !== id))
+  }, [])
+
+  const copyToClipboard = useCallback(async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+  }, [])
 
   const sendToWs = useCallback((data: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -1139,7 +1168,6 @@ export default function Terminal({ token }: Props) {
     const formData = new FormData()
     formData.append('file', file)
     try {
-      // F-21: 使用新的独立文件上传 API
       const res = await fetch('/api/files/upload', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -1147,9 +1175,9 @@ export default function Terminal({ token }: Props) {
       })
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
-      // 在终端显示上传成功信息
       const url = data.url
       const filename = data.originalName || file.name
+      addUploadNotification(filename, url)
       const term = termRef.current
       if (term) {
         term.writeln(`\r\n\x1b[32m[Nexus: 文件已上传]\x1b[0m ${filename}`)
@@ -2055,6 +2083,99 @@ export default function Terminal({ token }: Props) {
           </div>
         )
       })()}
+
+      {/* 上传文件通知条 */}
+      {uploadNotifications.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: isWidePC ? 16 : (toolbarHeightRef.current + 16),
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 200,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+          maxWidth: '90vw',
+          width: 480,
+        }}>
+          {uploadNotifications.map((notification) => (
+            <div
+              key={notification.id}
+              style={{
+                background: 'var(--nexus-menu-bg)',
+                border: '1px solid var(--nexus-border)',
+                borderRadius: 8,
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+                animation: 'slideUp 0.2s ease-out',
+              }}
+            >
+              <span style={{
+                flex: 1,
+                color: 'var(--nexus-text)',
+                fontSize: 13,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }} title={notification.path}>
+                {notification.filename}
+              </span>
+              <button
+                onClick={() => copyToClipboard(notification.path)}
+                style={{
+                  background: 'var(--nexus-bg2)',
+                  border: '1px solid var(--nexus-border)',
+                  borderRadius: 6,
+                  color: 'var(--nexus-text2)',
+                  cursor: 'pointer',
+                  padding: '6px 10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 12,
+                  whiteSpace: 'nowrap',
+                }}
+                title="复制路径"
+              >
+                <Icon name="copy" size={14} />
+                <span>复制</span>
+              </button>
+              <button
+                onClick={() => removeUploadNotification(notification.id)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'var(--nexus-text2)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="关闭"
+              >
+                <Icon name="x" size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   )
 }
