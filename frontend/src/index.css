@@ -1,3 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Nexus CSS Variables - Theme System */
+/* Dark theme (default) */
+:root {
+  --nexus-bg: #0f172a;
+  --nexus-bg2: #1e293b;
+  --nexus-menu-bg: #1e293b;
+  --nexus-border: #334155;
+  --nexus-text: #f1f5f9;
+  --nexus-text2: #94a3b8;
+  --nexus-muted: #475569;
+  --nexus-tab-active: #1e293b;
+  --nexus-accent: #3b82f6;
+  --nexus-success: #22c55e;
+  --nexus-warning: #f59e0b;
+  --nexus-error: #ef4444;
+}
+
+/* Light theme */
+:root.light {
+  --nexus-bg: #ffffff;
+  --nexus-bg2: #f1f5f9;
+  --nexus-menu-bg: #ffffff;
+  --nexus-border: #e2e8f0;
+  --nexus-text: #0f172a;
+  --nexus-text2: #64748b;
+  --nexus-muted: #94a3b8;
+  --nexus-tab-active: #f1f5f9;
+  --nexus-accent: #3b82f6;
+  --nexus-success: #22c55e;
+  --nexus-warning: #f59e0b;
+  --nexus-error: #ef4444;
+}
+
 /* 移动端启用触摸覆盖层（桌面端保持 none，不拦截鼠标事件） */
 @media (hover: none) and (pointer: coarse) {
   .touch-overlay {
@@ -18,14 +55,4 @@
 .xterm-screen {
   height: 100% !important;
   width: 100% !important;
-}
-
-/* Loading spinner animation */
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
 }

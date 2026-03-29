@@ -206,35 +206,16 @@ function Sidebar({
   }
 
   return (
-    <div style={{
-      flex: 1,
-      background: 'var(--nexus-bg)',
-      display: 'flex',
-      flexDirection: 'column',
-      minHeight: 0,
-      overflow: 'hidden',
-    }}>
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-nexus-bg">
       {/* Session Selector */}
-      <div style={{
-        padding: '12px 16px',
-        borderBottom: '1px solid var(--nexus-border)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ color: 'var(--nexus-text)', fontSize: 14, fontWeight: 600, flex: 1 }}>会话管理</span>
+      <div className="px-4 py-3 border-b border-nexus-border">
+        <div className="flex items-center mb-2">
+          <span className="text-nexus-text text-sm font-semibold flex-1">会话管理</span>
         </div>
         <select
           value={activeSession}
           onChange={(e) => { onSwitchSession(e.target.value); setTimeout(() => onFocusTerm?.(), 50) }}
-          style={{
-            width: '100%',
-            background: 'var(--nexus-bg2)',
-            border: '1px solid var(--nexus-border)',
-            borderRadius: 6,
-            color: 'var(--nexus-text)',
-            fontSize: 13,
-            padding: '8px 10px',
-            cursor: 'pointer',
-          }}
+          className="w-full bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-2.5 py-2 cursor-pointer"
         >
           {sessions.map(s => (
             <option key={s} value={s}>{s}</option>
@@ -243,28 +224,22 @@ function Sidebar({
       </div>
 
       {/* Window List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
+      <div className="flex-1 overflow-y-auto py-1.5">
         {windows.map(win => {
           const status = getWindowStatus(windowOutputs[win.index])
           const isActive = win.index === activeIndex
           const isMenuOpen = menuOpenIndex === win.index
           const isRenaming = renameIndex === win.index
           return (
-            <div key={win.index} style={{ borderBottom: '1px solid var(--nexus-border)' }}>
+            <div key={win.index} className="border-b border-nexus-border">
               {/* Main row */}
               <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 12px',
-                  background: isActive ? 'var(--nexus-tab-active)' : 'transparent',
-                  cursor: 'pointer',
-                }}
+                className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer ${isActive ? 'bg-nexus-tab-active' : 'bg-transparent'}`}
                 onClick={() => { onSwitch(win.index); setTimeout(() => onFocusTerm?.(), 50) }}
               >
                 <span
-                  style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_DOT_COLOR[status], flexShrink: 0, display: 'inline-block' }}
+                  className="w-2 h-2 rounded-full flex-shrink-0 inline-block"
+                  style={{ background: STATUS_DOT_COLOR[status] }}
                   title={STATUS_DOT_TITLE[status]}
                 />
                 {isRenaming ? (
@@ -278,47 +253,28 @@ function Sidebar({
                     }}
                     onBlur={submitRename}
                     onClick={(e) => e.stopPropagation()}
-                    style={{
-                      flex: 1,
-                      background: 'var(--nexus-bg)',
-                      border: '1px solid var(--nexus-accent)',
-                      borderRadius: 4,
-                      color: 'var(--nexus-text)',
-                      fontSize: 13,
-                      fontFamily: 'Menlo, Monaco, "Cascadia Code", monospace',
-                      padding: '3px 6px',
-                      outline: 'none',
-                    }}
+                    className="flex-1 bg-nexus-bg border border-nexus-accent rounded px-1.5 py-0.5 text-nexus-text text-sm font-mono outline-none"
                   />
                 ) : (
-                  <span style={{
-                    flex: 1,
-                    color: isActive ? 'var(--nexus-text)' : 'var(--nexus-text2)',
-                    fontSize: 13,
-                    fontFamily: 'Menlo, Monaco, "Cascadia Code", monospace',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}>{win.name}</span>
+                  <span className={`flex-1 text-sm font-mono overflow-hidden text-ellipsis whitespace-nowrap ${isActive ? 'text-nexus-text' : 'text-nexus-text-2'}`}>{win.name}</span>
                 )}
-                {isActive && !isRenaming && <span style={{ color: 'var(--nexus-accent)', fontSize: 13, fontWeight: 600, flexShrink: 0, display: 'flex', alignItems: 'center' }}><Icon name="check" size={14} /></span>}
+                {isActive && !isRenaming && <span className="text-nexus-accent text-sm font-semibold flex-shrink-0 flex items-center"><Icon name="check" size={14} /></span>}
                 <button
-                  className="window-menu-btn"
-                  style={{ background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', padding: '2px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  className="window-menu-btn bg-transparent border-none text-nexus-text-2 cursor-pointer p-0.5 flex-shrink-0 flex items-center justify-center"
                   onClick={(e) => { e.stopPropagation(); setMenuOpenIndex(isMenuOpen ? null : win.index); setRenameIndex(null) }}
                 ><Icon name="more" size={16} /></button>
               </div>
               {/* Action row */}
               {isMenuOpen && !isRenaming && (
-                <div className="window-action-row" style={{ display: 'flex', gap: 8, padding: '6px 12px 10px', background: 'var(--nexus-bg)' }}>
+                <div className="window-action-row flex gap-2 px-3 py-1.5 pb-2.5 bg-nexus-bg">
                   <button
-                    style={{ flex: 1, background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 12, padding: '6px 0', cursor: 'pointer' }}
+                    className="flex-1 bg-transparent border border-nexus-border rounded-md text-nexus-text text-xs py-1.5 cursor-pointer"
                     onClick={(e) => { e.stopPropagation(); setRenameValue(win.name); setRenameIndex(win.index); setMenuOpenIndex(null) }}
-                  ><span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><Icon name="pencil" size={12} />改名</span></button>
+                  ><span className="flex items-center justify-center gap-1"><Icon name="pencil" size={12} />改名</span></button>
                   <button
-                    style={{ flex: 1, background: 'transparent', border: '1px solid var(--nexus-error)', borderRadius: 6, color: 'var(--nexus-error)', fontSize: 12, padding: '6px 0', cursor: 'pointer' }}
+                    className="flex-1 bg-transparent border border-nexus-error rounded-md text-nexus-error text-xs py-1.5 cursor-pointer"
                     onClick={(e) => { e.stopPropagation(); onClose(win.index); setMenuOpenIndex(null) }}
-                  ><span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><Icon name="x" size={12} />关闭</span></button>
+                  ><span className="flex items-center justify-center gap-1"><Icon name="x" size={12} />关闭</span></button>
                 </div>
               )}
             </div>
@@ -331,7 +287,7 @@ function Sidebar({
         ref={fileInputRef}
         type="file"
         accept="image/*,video/*"
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file && onUploadFile) { onUploadFile(file) }
@@ -342,7 +298,7 @@ function Sidebar({
         ref={pasteFileRef}
         type="file"
         accept="*/*"
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file && onUploadFile) { onUploadFile(file) }
@@ -351,85 +307,27 @@ function Sidebar({
       />
 
       {/* Bottom Actions */}
-      <div style={{
-        borderTop: '1px solid var(--nexus-border)',
-        padding: '8px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 4,
-      }}>
+      <div className="border-t border-nexus-border p-2 flex flex-col gap-1">
         {/* + 新建 */}
-        <div ref={addMenuRef} style={{ position: 'relative' }}>
+        <div ref={addMenuRef} className="relative">
           <button
-            style={{
-              background: 'var(--nexus-accent)',
-              border: 'none',
-              borderRadius: 8,
-              color: '#fff',
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 600,
-              padding: '10px 12px',
-              width: '100%',
-              textAlign: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-            }}
+            className="w-full bg-nexus-accent border-none rounded-lg text-white cursor-pointer text-sm font-semibold py-2.5 px-3 text-center flex items-center justify-center gap-1.5"
             onClick={() => setShowAddMenu(!showAddMenu)}
           >
             <span>+</span>
             <span>新建</span>
           </button>
           {showAddMenu && (
-            <div style={{
-              position: 'absolute',
-              bottom: '100%',
-              left: 0,
-              right: 0,
-              marginBottom: 4,
-              background: 'var(--nexus-menu-bg)',
-              border: '1px solid var(--nexus-border)',
-              borderRadius: 8,
-              boxShadow: '0 -4px 12px rgba(0,0,0,0.3)',
-              zIndex: 10,
-              overflow: 'hidden',
-            }}>
+            <div className="absolute bottom-full left-0 right-0 mb-1 bg-nexus-menu-bg border border-nexus-border rounded-lg shadow-lg z-10 overflow-hidden">
               <button
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  borderBottom: '1px solid var(--nexus-border)',
-                  color: 'var(--nexus-text)',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  padding: '10px 12px',
-                  width: '100%',
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
+                className="w-full bg-transparent border-none border-b border-nexus-border text-nexus-text cursor-pointer text-sm py-2.5 px-3 text-left flex items-center gap-2"
                 onClick={() => { setShowAddMenu(false); onNewProject() }}
               >
                 <span>📁</span>
                 <span>新项目</span>
               </button>
               <button
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--nexus-text)',
-                  cursor: 'pointer',
-                  fontSize: 13,
-                  padding: '10px 12px',
-                  width: '100%',
-                  textAlign: 'left',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
+                className="w-full bg-transparent border-none text-nexus-text cursor-pointer text-sm py-2.5 px-3 text-left flex items-center gap-2"
                 onClick={() => { setShowAddMenu(false); onNewWindow() }}
               >
                 <span>➕</span>
@@ -440,44 +338,20 @@ function Sidebar({
         </div>
 
         {/* 功能按钮网格 - 两列布局 */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+        <div className="grid grid-cols-2 gap-1">
           <button
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--nexus-border)',
-              borderRadius: 6,
-              color: 'var(--nexus-text2)',
-              cursor: 'pointer',
-              fontSize: 12,
-              padding: '6px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-            }}
+            className="bg-transparent border border-nexus-border rounded-md text-nexus-text-2 cursor-pointer text-xs py-1.5 px-2 flex items-center justify-center gap-1"
             onClick={onOpenTasks}
             title="任务面板"
           >
             <Icon name="clipboard" size={14} />
             <span>任务</span>
-            {!!runningTaskCount && <span style={{ background: 'var(--nexus-success)', color: '#fff', borderRadius: 8, fontSize: 9, padding: '0 4px' }}>{runningTaskCount}</span>}
+            {!!runningTaskCount && <span className="bg-nexus-success text-white rounded-full text-[9px] px-1">{runningTaskCount}</span>}
           </button>
 
           {onOpenFiles && (
             <button
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--nexus-border)',
-                borderRadius: 6,
-                color: 'var(--nexus-text2)',
-                cursor: 'pointer',
-                fontSize: 12,
-                padding: '6px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
+              className="bg-transparent border border-nexus-border rounded-md text-nexus-text-2 cursor-pointer text-xs py-1.5 px-2 flex items-center justify-center gap-1"
               onClick={onOpenFiles}
               title="文件列表"
             >
@@ -487,23 +361,10 @@ function Sidebar({
           )}
 
           {/* 上传按钮 */}
-          <div style={{ position: 'relative' }}>
+          <div className="relative">
             <button
               ref={uploadBtnRef}
-              style={{
-                background: 'transparent',
-                border: '1px solid var(--nexus-border)',
-                borderRadius: 6,
-                color: 'var(--nexus-text2)',
-                cursor: 'pointer',
-                fontSize: 12,
-                padding: '6px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-                width: '100%',
-              }}
+              className="w-full bg-transparent border border-nexus-border rounded-md text-nexus-text-2 cursor-pointer text-xs py-1.5 px-2 flex items-center justify-center gap-1"
               onClick={(e) => {
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
                 setUploadMenuPos({ top: rect.top - 80, left: rect.left })
@@ -516,52 +377,20 @@ function Sidebar({
             </button>
             {showUploadMenu && (
               <>
-                <div style={{ position: 'fixed', inset: 0, zIndex: 299 }} onClick={() => setShowUploadMenu(false)} />
-                <div style={{
-                  position: 'fixed',
-                  top: uploadMenuPos.top,
-                  left: uploadMenuPos.left,
-                  background: 'var(--nexus-menu-bg)',
-                  border: '1px solid var(--nexus-border)',
-                  borderRadius: 6,
-                  padding: '4px 0',
-                  minWidth: 100,
-                  zIndex: 300,
-                  boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-                }}>
+                <div className="fixed inset-0 z-[299]" onClick={() => setShowUploadMenu(false)} />
+                <div
+                  className="fixed bg-nexus-menu-bg border border-nexus-border rounded-md py-1 min-w-[100px] z-[300] shadow-lg"
+                  style={{ top: uploadMenuPos.top, left: uploadMenuPos.left }}
+                >
                   <button
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text)',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      padding: '8px 12px',
-                      width: '100%',
-                      textAlign: 'left',
-                    }}
+                    className="w-full flex items-center gap-2 bg-transparent border-none text-nexus-text cursor-pointer text-sm py-2 px-3 text-left"
                     onClick={() => { fileInputRef.current?.click(); setShowUploadMenu(false) }}
                   >
                     <Icon name="image" size={14} />
                     <span>相册</span>
                   </button>
                   <button
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text)',
-                      cursor: 'pointer',
-                      fontSize: 13,
-                      padding: '8px 12px',
-                      width: '100%',
-                      textAlign: 'left',
-                    }}
+                    className="w-full flex items-center gap-2 bg-transparent border-none text-nexus-text cursor-pointer text-sm py-2 px-3 text-left"
                     onClick={() => { pasteFileRef.current?.click(); setShowUploadMenu(false) }}
                   >
                     <Icon name="folder" size={14} />
@@ -573,19 +402,7 @@ function Sidebar({
           </div>
 
           <button
-            style={{
-              background: 'transparent',
-              border: '1px solid var(--nexus-border)',
-              borderRadius: 6,
-              color: 'var(--nexus-text2)',
-              cursor: 'pointer',
-              fontSize: 12,
-              padding: '6px 8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-            }}
+            className="bg-transparent border border-nexus-border rounded-md text-nexus-text-2 cursor-pointer text-xs py-1.5 px-2 flex items-center justify-center gap-1"
             onClick={onToggleTheme}
             title={themeMode === 'dark' ? '切换亮色' : '切换暗色'}
           >
@@ -596,22 +413,9 @@ function Sidebar({
 
         {/* 底部单行：配置 + 快捷键 - 仅在传入回调时显示 */}
         {onOpenShortcuts && (
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div className="flex gap-1">
             <button
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: '1px solid var(--nexus-border)',
-                borderRadius: 6,
-                color: 'var(--nexus-text2)',
-                cursor: 'pointer',
-                fontSize: 12,
-                padding: '6px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
+              className="flex-1 bg-transparent border border-nexus-border rounded-md text-nexus-text-2 cursor-pointer text-xs py-1.5 px-2 flex items-center justify-center gap-1"
               onClick={onOpenSettings}
               title="配置管理"
             >
@@ -620,20 +424,7 @@ function Sidebar({
             </button>
 
             <button
-              style={{
-                flex: 1,
-                background: 'transparent',
-                border: '1px solid var(--nexus-border)',
-                borderRadius: 6,
-                color: 'var(--nexus-text2)',
-                cursor: 'pointer',
-                fontSize: 12,
-                padding: '6px 8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-              }}
+              className="flex-1 bg-transparent border border-nexus-border rounded-md text-nexus-text-2 cursor-pointer text-xs py-1.5 px-2 flex items-center justify-center gap-1"
               onClick={onOpenShortcuts}
               title="快捷键"
             >
@@ -700,6 +491,7 @@ export default function Terminal({ token }: Props) {
   // Toolbar 展开状态（移动端点击空白区域时收起）
   const [toolbarCollapsed, setToolbarCollapsed] = useState<boolean | undefined>(undefined)
   const [uploadNotifications, setUploadNotifications] = useState<Array<{ id: string; filename: string; path: string }>>([])
+  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   // F-18: 多 tmux session 支持
   const [tmuxSessions, setTmuxSessions] = useState<string[]>([])
@@ -805,6 +597,12 @@ export default function Terminal({ token }: Props) {
       document.body.removeChild(textarea)
     }
   }, [])
+
+  const handleCopyNotification = useCallback(async (id: string, path: string) => {
+    await copyToClipboard(path)
+    setCopiedId(id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }, [copyToClipboard])
 
   const sendToWs = useCallback((data: string) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -1165,15 +963,22 @@ export default function Terminal({ token }: Props) {
     fileInputRef.current?.click()
   }
 
-  async function uploadFile(file: File) {
+  async function uploadFile(file: File, overwrite = false) {
     const formData = new FormData()
     formData.append('file', file)
     try {
-      const res = await fetch('/api/files/upload', {
+      const url = overwrite ? '/api/files/upload?overwrite=1' : '/api/files/upload'
+      const res = await fetch(url, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
       })
+      if (res.status === 409) {
+        // 文件已存在，显示确认对话框
+        const data = await res.json()
+        setUploadConflict({ show: true, file, filename: data.filename || file.name })
+        return
+      }
       if (!res.ok) throw new Error(await res.text())
       const data = await res.json()
       const fullPath = data.fullPath
@@ -1190,6 +995,21 @@ export default function Terminal({ token }: Props) {
       if (term) {
         term.writeln(`\r\n\x1b[31m[Nexus: 上传失败]\x1b[0m ${e.message || 'unknown error'}`)
       }
+    }
+  }
+
+  function handleOverwriteConfirm() {
+    if (uploadConflict.file) {
+      uploadFile(uploadConflict.file, true)
+      setUploadConflict({ show: false, file: null, filename: '' })
+    }
+  }
+
+  function handleOverwriteCancel() {
+    setUploadConflict({ show: false, file: null, filename: '' })
+    const term = termRef.current
+    if (term) {
+      term.writeln(`\r\n\x1b[33m[Nexus: 上传已取消]\x1b[0m ${uploadConflict.filename}`)
     }
   }
 
@@ -1694,6 +1514,8 @@ export default function Terminal({ token }: Props) {
 
   // Track keyboard visibility and adjust layout height on mobile
   const [vvHeight, setVvHeight] = useState<number | null>(null)
+  // 文件上传覆盖确认对话框状态
+  const [uploadConflict, setUploadConflict] = useState<{ show: boolean; file: File | null; filename: string }>({ show: false, file: null, filename: '' })
   useEffect(() => {
     if (isWidePC) {
       setVvHeight(null)
@@ -1824,10 +1646,10 @@ export default function Terminal({ token }: Props) {
   }
 
   return (
-    <div style={{ ...styles.wrapper, height: vvHeight ?? '100dvh' }}>
+    <div className="flex flex-col w-full relative" style={{ height: vvHeight ?? '100dvh' }}>
       <input
         ref={inputRef}
-        style={styles.hiddenInput}
+        className="fixed top-0 left-0 w-px h-px opacity-[0.01] text-base pointer-events-none -z-10"
         autoComplete="off"
         autoCorrect="off"
         autoCapitalize="off"
@@ -1842,7 +1664,7 @@ export default function Terminal({ token }: Props) {
         ref={fileInputRef}
         type="file"
         accept="image/*,video/*"
-        style={styles.hiddenInput}
+        className="fixed top-0 left-0 w-px h-px opacity-[0.01] text-base pointer-events-none -z-10"
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) uploadFile(file)
@@ -1853,7 +1675,7 @@ export default function Terminal({ token }: Props) {
       <input
         ref={pasteFileRef}
         type="file"
-        style={styles.hiddenInput}
+        className="fixed top-0 left-0 w-px h-px opacity-[0.01] text-base pointer-events-none -z-10"
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file) uploadFile(file)
@@ -1863,33 +1685,19 @@ export default function Terminal({ token }: Props) {
       />
 
       {isWidePC ? (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-          <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+        <div className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <div className="flex flex-1 overflow-hidden min-h-0">
             {/* Collapsible Sidebar */}
             <div
-              style={{
-                width: sidebarCollapsed ? 48 : 220,
-                flexShrink: 0,
-                borderRight: '1px solid var(--nexus-border)',
-                display: 'flex',
-                flexDirection: 'column',
-                minHeight: 0,
-                background: 'var(--nexus-bg)',
-                transition: 'width 0.2s ease',
-              }}
+              className="flex-shrink-0 flex flex-col min-h-0 bg-nexus-bg border-r border-nexus-border transition-[width] duration-200 ease-out"
+              style={{ width: sidebarCollapsed ? 48 : 220 }}
               onMouseEnter={() => setSidebarHovered(true)}
               onMouseLeave={() => setSidebarHovered(false)}
             >
               {/* Collapse/Expand Toggle */}
               <div
-                style={{
-                  height: 40,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: sidebarCollapsed ? 'center' : 'flex-end',
-                  padding: sidebarCollapsed ? 0 : '0 12px',
-                  borderBottom: '1px solid var(--nexus-border)',
-                }}
+                className="h-10 flex items-center border-b border-nexus-border"
+                style={{ justifyContent: sidebarCollapsed ? 'center' : 'flex-end', padding: sidebarCollapsed ? 0 : '0 12px' }}
               >
                 <button
                   onClick={() => {
@@ -1897,19 +1705,8 @@ export default function Terminal({ token }: Props) {
                     setSidebarCollapsed(newState)
                     localStorage.setItem('nexus_sidebar_collapsed', String(newState))
                   }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--nexus-text2)',
-                    cursor: 'pointer',
-                    padding: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: 6,
-                    opacity: sidebarCollapsed || sidebarHovered ? 1 : 0.5,
-                    transition: 'opacity 0.2s',
-                  }}
+                  className="bg-transparent border-none text-nexus-text-2 p-2 flex items-center justify-center rounded-md transition-opacity duration-200"
+                  style={{ opacity: sidebarCollapsed || sidebarHovered ? 1 : 0.5 }}
                   title={sidebarCollapsed ? '展开侧边栏' : '收起侧边栏'}
                 >
                   <Icon name={sidebarCollapsed ? 'arrowRight' : 'arrowLeft'} size={16} />
@@ -1919,7 +1716,7 @@ export default function Terminal({ token }: Props) {
               {sidebarCollapsed ? (
                 /* Collapsed Sidebar - Icon Only */
                 <div
-                  style={{ flex: 1, overflow: 'hidden', padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 2 }}
+                  className="flex-1 overflow-hidden py-2 flex flex-col gap-0.5"
                   onClick={() => {
                     setSidebarCollapsed(false)
                     localStorage.setItem('nexus_sidebar_collapsed', 'false')
@@ -1933,48 +1730,27 @@ export default function Terminal({ token }: Props) {
                       <button
                         key={win.index}
                         onClick={() => attachToWindow(win.index)}
+                        className="w-12 h-10 bg-transparent border-none flex items-center justify-center cursor-pointer relative"
                         style={{
-                          width: 48,
-                          height: 40,
                           background: isActive ? 'var(--nexus-tab-active)' : 'transparent',
-                          border: 'none',
                           borderLeft: isActive ? '3px solid var(--nexus-accent)' : '3px solid transparent',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          position: 'relative',
                         }}
                         title={win.name}
                       >
                         <span
-                          style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: STATUS_DOT_COLOR[status],
-                          }}
+                          className="w-2 h-2 rounded-full"
+                          style={{ background: STATUS_DOT_COLOR[status] }}
                         />
                       </button>
                     )
                   })}
 
-                  <div style={{ borderTop: '1px solid var(--nexus-border)', margin: '8px 0' }} />
+                  <div className="border-t border-nexus-border my-2" />
 
                   {/* Quick actions */}
                   <button
                     onClick={openNewSessionDialog}
-                    style={{
-                      width: 48,
-                      height: 40,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                    }}
+                    className="w-12 h-10 bg-transparent border-none text-nexus-text-2 flex items-center justify-center cursor-pointer"
                     title="新建项目"
                   >
                     <Icon name="folder" size={18} />
@@ -1982,17 +1758,7 @@ export default function Terminal({ token }: Props) {
 
                   <button
                     onClick={handleCreateWindow}
-                    style={{
-                      width: 48,
-                      height: 40,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                    }}
+                    className="w-12 h-10 bg-transparent border-none text-nexus-text-2 flex items-center justify-center cursor-pointer"
                     title="新建窗口"
                   >
                     <Icon name="plus" size={18} />
@@ -2000,47 +1766,18 @@ export default function Terminal({ token }: Props) {
 
                   <button
                     onClick={() => setShowTasks(true)}
-                    style={{
-                      width: 48,
-                      height: 40,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      position: 'relative',
-                    }}
+                    className="w-12 h-10 bg-transparent border-none text-nexus-text-2 flex items-center justify-center cursor-pointer relative"
                     title="任务面板"
                   >
                     <Icon name="clipboard" size={18} />
                     {!!runningTaskCount && (
-                      <span style={{
-                        position: 'absolute',
-                        top: 6,
-                        right: 6,
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: 'var(--nexus-success)',
-                      }} />
+                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-nexus-success" />
                     )}
                   </button>
 
                   <button
                     onClick={() => setShowFiles(true)}
-                    style={{
-                      width: 48,
-                      height: 40,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                    }}
+                    className="w-12 h-10 bg-transparent border-none text-nexus-text-2 flex items-center justify-center cursor-pointer"
                     title="文件列表"
                   >
                     <Icon name="folder" size={18} />
@@ -2048,37 +1785,17 @@ export default function Terminal({ token }: Props) {
 
                   <button
                     onClick={handleFileUpload}
-                    style={{
-                      width: 48,
-                      height: 40,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                    }}
+                    className="w-12 h-10 bg-transparent border-none text-nexus-text-2 flex items-center justify-center cursor-pointer"
                     title="上传文件"
                   >
                     <Icon name="paperclip" size={18} />
                   </button>
 
-                  <div style={{ flex: 1 }} />
+                  <div className="flex-1" />
 
                   <button
                     onClick={toggleTheme}
-                    style={{
-                      width: 48,
-                      height: 40,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                    }}
+                    className="w-12 h-10 bg-transparent border-none text-nexus-text-2 flex items-center justify-center cursor-pointer"
                     title={themeMode === 'dark' ? '切换亮色' : '切换暗色'}
                   >
                     <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} size={18} />
@@ -2086,17 +1803,7 @@ export default function Terminal({ token }: Props) {
 
                   <button
                     onClick={() => setShowSessionManagerV2(true)}
-                    style={{
-                      width: 48,
-                      height: 40,
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--nexus-text2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                    }}
+                    className="w-12 h-10 bg-transparent border-none text-nexus-text-2 flex items-center justify-center cursor-pointer"
                     title="配置管理"
                   >
                     <Icon name="settings" size={18} />
@@ -2105,7 +1812,7 @@ export default function Terminal({ token }: Props) {
               ) : (
                 /* Expanded Sidebar - Full Panel */
                 <div
-                  style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+                  className="flex-1 flex flex-col min-h-0"
                   onClick={(e) => {
                     // 点击空白处（非按钮/输入框）收起侧边栏
                     if (e.target === e.currentTarget || (e.target as HTMLElement).dataset?.role === 'sidebar-content') {
@@ -2114,7 +1821,7 @@ export default function Terminal({ token }: Props) {
                     }
                   }}
                 >
-                  <div data-role="sidebar-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                  <div data-role="sidebar-content" className="flex-1 flex flex-col min-h-0">
                     <Sidebar
                       windows={windows}
                       activeIndex={activeWindowIndex}
@@ -2138,38 +1845,38 @@ export default function Terminal({ token }: Props) {
                     />
                   </div>
                   {/* PC端工具栏放在侧边栏底部 */}
-                  <div style={{ borderTop: '1px solid var(--nexus-border)', flexShrink: 0 }}>
+                  <div className="border-t border-nexus-border flex-shrink-0">
                     <Toolbar {...toolbarProps} embedded />
                   </div>
                 </div>
               )}
             </div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, position: 'relative' }}>
-              <div ref={containerRef} style={styles.terminal} onClick={() => termRef.current?.textarea?.focus()} />
+            <div className="flex-1 flex flex-col min-w-0 relative">
+              <div ref={containerRef} className="flex-1 overflow-hidden relative" onClick={() => termRef.current?.textarea?.focus()} />
               {isConnecting && (
-                <div style={styles.loadingOverlay}>
-                  <div style={styles.spinner} />
-                  <span style={styles.loadingText}>Connecting...</span>
+                <div className="absolute inset-0 bg-nexus-bg flex flex-col items-center justify-center gap-3 z-10">
+                  <div className="w-8 h-8 border-[3px] border-nexus-border border-t-nexus-accent rounded-full animate-spin" />
+                  <span className="text-nexus-text-2 text-sm">Connecting...</span>
                 </div>
               )}
               {isScrolledUp && (
-                <button style={styles.scrollBtn} onClick={scrollToBottom} title="滚到底部"><Icon name="arrowDown" size={16} /></button>
+                <button className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-nexus-accent border-none text-white text-lg cursor-pointer z-50 flex items-center justify-center shadow-lg backdrop-blur-sm" onClick={scrollToBottom} title="滚到底部"><Icon name="arrowDown" size={16} /></button>
               )}
             </div>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0 }}>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
-            <div ref={containerRef} style={styles.terminal} />
+        <div className="flex flex-col flex-1 overflow-hidden min-h-0">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden relative">
+            <div ref={containerRef} className="flex-1 overflow-hidden relative" />
             {isConnecting && (
-              <div style={styles.loadingOverlay}>
-                <div style={styles.spinner} />
-                <span style={styles.loadingText}>Connecting...</span>
+              <div className="absolute inset-0 bg-nexus-bg flex flex-col items-center justify-center gap-3 z-10">
+                <div className="w-8 h-8 border-[3px] border-nexus-border border-t-nexus-accent rounded-full animate-spin" />
+                <span className="text-nexus-text-2 text-sm">Connecting...</span>
               </div>
             )}
             {isScrolledUp && (
-              <button style={styles.scrollBtn} onClick={scrollToBottom} title="滚到底部"><Icon name="arrowDown" size={16} /></button>
+              <button className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-nexus-accent border-none text-white text-lg cursor-pointer z-50 flex items-center justify-center shadow-lg backdrop-blur-sm" onClick={scrollToBottom} title="滚到底部"><Icon name="arrowDown" size={16} /></button>
             )}
           </div>
           <SessionFAB onClick={() => setShowSessionManagerV2(v => !v)} windowCount={windows.length} bottomInset={toolbarHeightRef.current} />
@@ -2181,26 +1888,27 @@ export default function Terminal({ token }: Props) {
       {showSessionDrawer && !isWidePC && (
         <>
           <GhostShield />
-          <div style={{ position: 'fixed', inset: 0, zIndex: 400, background: 'rgba(0,0,0,0.5)' }} onPointerDown={() => { setShowSessionDrawer(false); setDrawerMenuIndex(null); setDrawerRenameIndex(null) }} />
-          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 401, background: 'var(--nexus-menu-bg)', borderRadius: '12px 12px 0 0', border: '1px solid var(--nexus-border)', borderBottom: 'none', maxHeight: '70vh', display: 'flex', flexDirection: 'column', boxShadow: '0 -4px 24px rgba(0,0,0,0.4)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--nexus-border)', flexShrink: 0 }}>
-              <span style={{ color: 'var(--nexus-text)', fontWeight: 600, fontSize: 15 }}>会话管理</span>
-              <button style={{ background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onPointerDown={(e) => { e.preventDefault(); setShowSessionDrawer(false); setDrawerMenuIndex(null); setDrawerRenameIndex(null); (document.activeElement as HTMLElement)?.blur() }}><Icon name="x" size={20} /></button>
+          <div className="fixed inset-0 z-[400] bg-black/50" onPointerDown={() => { setShowSessionDrawer(false); setDrawerMenuIndex(null); setDrawerRenameIndex(null) }} />
+          <div className="fixed bottom-0 left-0 right-0 z-[401] bg-nexus-menu-bg rounded-t-xl border border-nexus-border border-b-0 max-h-[70vh] flex flex-col shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
+            <div className="flex items-center justify-between px-4 py-3.5 border-b border-nexus-border flex-shrink-0">
+              <span className="text-nexus-text font-semibold text-[15px]">会话管理</span>
+              <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center" onPointerDown={(e) => { e.preventDefault(); setShowSessionDrawer(false); setDrawerMenuIndex(null); setDrawerRenameIndex(null); (document.activeElement as HTMLElement)?.blur() }}><Icon name="x" size={20} /></button>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0' }}>
+            <div className="flex-1 overflow-y-auto py-1.5">
               {windows.map(win => {
                 const status = getWindowStatus(windowOutputs[win.index])
                 const isActive = win.index === activeWindowIndex
                 const isMenuOpen = drawerMenuIndex === win.index
                 const isRenaming = drawerRenameIndex === win.index
                 return (
-                  <div key={win.index} style={{ borderBottom: '1px solid var(--nexus-border)' }}>
+                  <div key={win.index} className="border-b border-nexus-border">
                     {/* Main row */}
                     <div
-                      style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: isActive ? 'var(--nexus-tab-active)' : 'transparent' }}
+                      className={`flex items-center gap-3 px-4 py-3 ${isActive ? 'bg-nexus-tab-active' : 'bg-transparent'}`}
                     >
                       <span
-                        style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_DOT_COLOR[status], flexShrink: 0, display: 'inline-block' }}
+                        className="w-2 h-2 rounded-full flex-shrink-0 inline-block"
+                        style={{ background: STATUS_DOT_COLOR[status] }}
                         title={STATUS_DOT_TITLE[status]}
                       />
                       {isRenaming ? (
@@ -2213,32 +1921,32 @@ export default function Terminal({ token }: Props) {
                             if (e.key === 'Escape') setDrawerRenameIndex(null)
                           }}
                           onBlur={() => setDrawerRenameIndex(null)}
-                          style={{ flex: 1, background: 'var(--nexus-bg)', border: '1px solid var(--nexus-accent)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 14, fontFamily: 'Menlo, Monaco, monospace', padding: '4px 8px', outline: 'none' }}
+                          className="flex-1 bg-nexus-bg border border-nexus-accent rounded-md text-nexus-text text-sm font-mono py-1 px-2 outline-none"
                           onClick={e => e.stopPropagation()}
                         />
                       ) : (
                         <span
-                          style={{ flex: 1, color: 'var(--nexus-text)', fontSize: 14, fontFamily: 'Menlo, Monaco, monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                          className="flex-1 text-nexus-text text-sm font-mono overflow-hidden text-ellipsis whitespace-nowrap cursor-pointer"
                           onPointerUp={(e) => { e.stopPropagation(); attachToWindow(win.index); setShowSessionDrawer(false); setDrawerMenuIndex(null) }}
                         >{win.name}</span>
                       )}
-                      {isActive && !isRenaming && <span style={{ color: 'var(--nexus-accent)', fontSize: 13, fontWeight: 600, flexShrink: 0, display: 'flex', alignItems: 'center' }}><Icon name="check" size={14} /></span>}
+                      {isActive && !isRenaming && <span className="text-nexus-accent text-sm font-semibold flex-shrink-0 flex items-center"><Icon name="check" size={14} /></span>}
                       <button
-                        style={{ background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', padding: '4px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex-shrink-0 flex items-center justify-center"
                         onPointerDown={e => { e.stopPropagation(); setDrawerMenuIndex(isMenuOpen ? null : win.index); setDrawerRenameIndex(null) }}
                       ><Icon name="more" size={18} /></button>
                     </div>
                     {/* Action row */}
                     {isMenuOpen && !isRenaming && (
-                      <div style={{ display: 'flex', gap: 8, padding: '6px 16px 10px', background: 'var(--nexus-bg)' }}>
+                      <div className="flex gap-2 px-4 py-1.5 pb-2.5 bg-nexus-bg">
                         <button
-                          style={{ flex: 1, background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 13, padding: '7px 0', cursor: 'pointer' }}
+                          className="flex-1 bg-transparent border border-nexus-border rounded-md text-nexus-text text-sm py-1.5 cursor-pointer"
                           onPointerDown={e => { e.stopPropagation(); setDrawerRenameValue(win.name); setDrawerRenameIndex(win.index); setDrawerMenuIndex(null) }}
-                        ><span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><Icon name="pencil" size={14} />改名</span></button>
+                        ><span className="flex items-center justify-center gap-1"><Icon name="pencil" size={14} />改名</span></button>
                         <button
-                          style={{ flex: 1, background: 'transparent', border: '1px solid var(--nexus-error)', borderRadius: 6, color: 'var(--nexus-error)', fontSize: 13, padding: '7px 0', cursor: 'pointer' }}
+                          className="flex-1 bg-transparent border border-nexus-error rounded-md text-nexus-error text-sm py-1.5 cursor-pointer"
                           onPointerDown={e => { e.stopPropagation(); closeWindow(win.index); setDrawerMenuIndex(null); if (windows.length <= 1) setShowSessionDrawer(false) }}
-                        ><span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}><Icon name="x" size={14} />关闭</span></button>
+                        ><span className="flex items-center justify-center gap-1"><Icon name="x" size={14} />关闭</span></button>
                       </div>
                     )}
                   </div>
@@ -2246,28 +1954,30 @@ export default function Terminal({ token }: Props) {
               })}
               {/* tmux session 切换（多 session 时显示） */}
               {tmuxSessions.length > 1 && (
-                <div style={{ padding: '10px 16px 4px', color: 'var(--nexus-muted)', fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5 }}>Tmux Sessions</div>
+                <div className="px-4 pt-2.5 pb-1 text-nexus-muted text-[11px] uppercase tracking-wide">Tmux Sessions</div>
               )}
               {tmuxSessions.length > 1 && tmuxSessions.map(sess => (
                 <div
                   key={sess}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', cursor: 'pointer', background: sess === activeTmuxSession ? 'var(--nexus-tab-active)' : 'transparent' }}
+                  className={`flex items-center gap-2.5 px-4 py-2.5 cursor-pointer ${sess === activeTmuxSession ? 'bg-nexus-tab-active' : 'bg-transparent'}`}
                   onClick={() => { handleSwitchSession(sess); setShowSessionDrawer(false) }}
                 >
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: sess === activeTmuxSession ? 'var(--nexus-accent)' : 'var(--nexus-text2)', fontSize: 13 }}>{sess === activeTmuxSession ? <Icon name="check" size={14} /> : <span style={{ width: 14 }} />}{sess}</span>
+                  <span className="flex items-center gap-1.5 text-sm">{sess === activeTmuxSession ? <span className="text-nexus-accent"><Icon name="check" size={14} /></span> : <span className="w-3.5" />}<span className={sess === activeTmuxSession ? 'text-nexus-accent' : 'text-nexus-text-2'}>{sess}</span></span>
                 </div>
               ))}
             </div>
-            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--nexus-border)', flexShrink: 0, display: 'flex', gap: 8 }}>
+            <div className="px-4 py-3 border-t border-nexus-border flex-shrink-0 flex gap-2">
               <button
-                style={{ flex: 1, background: 'var(--nexus-accent)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 600, padding: '12px 0', cursor: 'pointer', touchAction: 'manipulation', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                className="flex-1 bg-nexus-accent border-none rounded-lg text-white text-sm font-semibold py-3 cursor-pointer flex items-center justify-center gap-1.5"
+                style={{ touchAction: 'manipulation' }}
                 onClick={() => { setShowSessionDrawer(false); openNewSessionDialog() }}
               >
                 <span>📁</span>
                 <span>新项目</span>
               </button>
               <button
-                style={{ flex: 1, background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)', borderRadius: 8, color: 'var(--nexus-text)', fontSize: 14, fontWeight: 600, padding: '12px 0', cursor: 'pointer', touchAction: 'manipulation', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                className="flex-1 bg-nexus-bg-2 border border-nexus-border rounded-lg text-nexus-text text-sm font-semibold py-3 cursor-pointer flex items-center justify-center gap-1.5"
+                style={{ touchAction: 'manipulation' }}
                 onClick={() => { setShowSessionDrawer(false); handleCreateWindow() }}
               >
                 <span>➕</span>
@@ -2331,36 +2041,18 @@ export default function Terminal({ token }: Props) {
 
       {/* 首次使用引导 */}
       {showGuide && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.7)',
-          zIndex: 500,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 20,
-        }}>
-          <div style={{
-            background: 'var(--nexus-menu-bg)',
-            borderRadius: 12,
-            padding: '24px',
-            maxWidth: 400,
-            border: '1px solid var(--nexus-border)',
-          }}>
-            <h3 style={{ color: 'var(--nexus-text)', marginTop: 0 }}>欢迎使用 Nexus</h3>
-            <ul style={{ color: 'var(--nexus-text2)', lineHeight: 1.9, fontSize: 13, paddingLeft: 20, margin: '8px 0' }}>
+        <div className="fixed inset-0 z-[500] bg-black/70 flex items-center justify-center p-5">
+          <div className="bg-nexus-menu-bg rounded-xl p-6 max-w-[400px] border border-nexus-border">
+            <h3 className="text-nexus-text mt-0">欢迎使用 Nexus</h3>
+            <ul className="text-nexus-text-2 leading-relaxed text-sm pl-5 my-2">
               <li>黑色区域是终端，点击聚焦后可键盘输入</li>
               <li>底部工具栏提供 Esc/Tab/^C 等快捷键</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="clipboard" size={14} />任务面板：后台发送 claude -p 任务</li>
-              <li style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Icon name="paperclip" size={14} />上传图片/文件到当前 session 目录</li>
+              <li className="flex items-center gap-1.5"><Icon name="clipboard" size={14} />任务面板：后台发送 claude -p 任务</li>
+              <li className="flex items-center gap-1.5"><Icon name="paperclip" size={14} />上传图片/文件到当前 session 目录</li>
               <li>📁 新项目：在选定目录创建窗口</li>
               <li>➕ 新窗口：在当前项目目录创建窗口</li>
             </ul>
-            <p style={{ color: 'var(--nexus-muted)', fontSize: 11, marginTop: 8 }}>
+            <p className="text-nexus-muted text-[11px] mt-2">
               Telegram Bot: /api/telegram/setup 一键配置
             </p>
             <button
@@ -2368,18 +2060,7 @@ export default function Terminal({ token }: Props) {
                 setShowGuide(false)
                 localStorage.setItem('nexus_guide_seen', 'true')
               }}
-              style={{
-                background: 'var(--nexus-accent)',
-                border: 'none',
-                borderRadius: 6,
-                color: '#fff',
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 600,
-                padding: '10px 20px',
-                marginTop: 12,
-                width: '100%',
-              }}
+              className="w-full bg-nexus-accent border-none rounded-md text-white cursor-pointer text-sm font-semibold py-2.5 px-5 mt-3"
             >
               开始使用
             </button>
@@ -2389,17 +2070,37 @@ export default function Terminal({ token }: Props) {
 
       {/* 空状态提示：只在数据加载完成后才显示 */}
       {windows.length === 0 && windowsLoaded && !isConnecting && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          textAlign: 'center',
-          color: 'var(--nexus-muted)',
-        }}>
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🖥️</div>
-          <div style={{ fontSize: 16, marginBottom: 8 }}>没有活动会话</div>
-          <div style={{ fontSize: 13 }}>点击「+ 新建」开始</div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-nexus-muted">
+          <div className="text-5xl mb-3">🖥️</div>
+          <div className="text-base mb-2">没有活动会话</div>
+          <div className="text-sm">点击「+ 新建」开始</div>
+        </div>
+      )}
+
+      {/* 文件上传覆盖确认对话框 */}
+      {uploadConflict.show && (
+        <div className="fixed inset-0 z-[500] bg-black/70 flex items-center justify-center p-5">
+          <div className="bg-nexus-menu-bg rounded-xl p-6 max-w-[400px] border border-nexus-border">
+            <h3 className="text-nexus-text mt-0 mb-2">文件已存在</h3>
+            <p className="text-nexus-text-2 text-sm mb-4">
+              文件 "<span className="text-nexus-text font-mono">{uploadConflict.filename}</span>" 已存在。
+              <br />是否覆盖？
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleOverwriteCancel}
+                className="flex-1 bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text cursor-pointer text-sm font-semibold py-2.5"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleOverwriteConfirm}
+                className="flex-1 bg-nexus-accent border-none rounded-md text-white cursor-pointer text-sm font-semibold py-2.5"
+              >
+                覆盖
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {showScrollback && (() => {
@@ -2410,25 +2111,27 @@ export default function Terminal({ token }: Props) {
         const termFontFamily = termRef.current?.options.fontFamily ?? 'Menlo, Monaco, monospace'
         const termMuted = (termTheme as any).brightBlack ?? '#4a5568'
         return (
-          <div style={{ position: 'fixed', inset: 0, zIndex: 500, background: termBg, display: 'flex', flexDirection: 'column' }}>
+          <div className="fixed inset-0 z-[500] flex flex-col" style={{ background: termBg }}>
             <GhostShield />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: `1px solid ${termMuted}44`, flexShrink: 0 }}>
-              <span style={{ color: termFg, fontWeight: 600, fontSize: 14 }}>历史记录</span>
-              <span style={{ color: termMuted, fontSize: 12, flex: 1, textAlign: 'center' }}>滚到底部返回终端</span>
+            <div className="flex items-center justify-between px-3.5 py-2.5 border-b flex-shrink-0" style={{ borderColor: `${termMuted}44` }}>
+              <span className="font-semibold text-sm" style={{ color: termFg }}>历史记录</span>
+              <span className="text-xs flex-1 text-center" style={{ color: termMuted }}>滚到底部返回终端</span>
               <button
-                style={{ background: 'transparent', border: 'none', color: termMuted, cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                className="bg-transparent border-none cursor-pointer p-1 flex items-center justify-center"
+                style={{ color: termMuted }}
                 onClick={closeScrollback}
               ><Icon name="x" size={20} /></button>
             </div>
             <div
               ref={scrollbackOverlayRef}
               onScroll={handleOverlayScroll}
-              style={{ flex: 1, overflowY: 'auto', padding: '8px 0', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+              className="flex-1 overflow-y-auto py-2"
+              style={{ WebkitOverflowScrolling: 'touch' }}
             >
               {scrollbackLoading ? (
-                <div style={{ color: termMuted, textAlign: 'center', padding: 32, fontFamily: termFontFamily, fontSize: termFontSize }}>加载中...</div>
+                <div className="text-center p-8" style={{ color: termMuted, fontFamily: termFontFamily, fontSize: termFontSize }}>加载中...</div>
               ) : (
-                <pre style={{ margin: 0, padding: 0, fontFamily: termFontFamily, fontSize: termFontSize, color: termFg, whiteSpace: 'pre-wrap', wordBreak: 'break-all', lineHeight: 1.2 }}>
+                <pre className="m-0 p-0 whitespace-pre-wrap break-all leading-tight" style={{ fontFamily: termFontFamily, fontSize: termFontSize, color: termFg }}>
                   {scrollbackContent}
                 </pre>
               )}
@@ -2439,77 +2142,38 @@ export default function Terminal({ token }: Props) {
 
       {/* 上传文件通知条 */}
       {uploadNotifications.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          bottom: isWidePC ? 16 : (toolbarHeightRef.current + 16),
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 200,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 8,
-          maxWidth: '90vw',
-          width: 480,
-        }}>
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[200] flex flex-col gap-2 max-w-[90vw] w-[480px]"
+          style={{ bottom: isWidePC ? 16 : (toolbarHeightRef.current + 16) }}
+        >
           {uploadNotifications.map((notification) => (
             <div
               key={notification.id}
+              className="flex items-center gap-2.5 p-2.5 px-3 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,0.25)] animate-slide-up"
               style={{
                 background: 'color-mix(in srgb, var(--nexus-bg2) 85%, transparent)',
                 backdropFilter: 'blur(12px)',
                 WebkitBackdropFilter: 'blur(12px)',
                 border: '1px solid color-mix(in srgb, var(--nexus-border) 50%, transparent)',
-                borderRadius: 8,
-                padding: '10px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25)',
-                animation: 'slideUp 0.2s ease-out',
               }}
             >
-              <span style={{
-                flex: 1,
-                color: 'var(--nexus-text)',
-                fontSize: 13,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }} title={notification.path}>
+              <span
+                className="flex-1 text-nexus-text text-sm overflow-hidden text-ellipsis whitespace-nowrap"
+                title={notification.path}
+              >
                 {notification.filename}
               </span>
               <button
-                onClick={() => copyToClipboard(notification.path)}
-                style={{
-                  background: 'var(--nexus-bg2)',
-                  border: '1px solid var(--nexus-border)',
-                  borderRadius: 6,
-                  color: 'var(--nexus-text2)',
-                  cursor: 'pointer',
-                  padding: '6px 10px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  fontSize: 12,
-                  whiteSpace: 'nowrap',
-                }}
+                onClick={() => handleCopyNotification(notification.id, notification.path)}
+                className={`rounded-md cursor-pointer py-1.5 px-2.5 flex items-center gap-1 text-xs whitespace-nowrap transition-all duration-100 active:scale-95 ${copiedId === notification.id ? 'bg-nexus-success border-none text-white' : 'bg-nexus-bg-2 border border-nexus-border text-nexus-text-2 active:bg-nexus-bg active:text-nexus-text'}`}
                 title="复制路径"
               >
-                <Icon name="copy" size={14} />
-                <span>复制</span>
+                <Icon name={copiedId === notification.id ? 'check' : 'copy'} size={14} />
+                <span>{copiedId === notification.id ? '已复制' : '复制'}</span>
               </button>
               <button
                 onClick={() => removeUploadNotification(notification.id)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--nexus-text2)',
-                  cursor: 'pointer',
-                  padding: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
+                className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center transition-all duration-100 active:scale-90 active:text-nexus-text"
                 title="关闭"
               >
                 <Icon name="x" size={16} />
@@ -2518,91 +2182,6 @@ export default function Terminal({ token }: Props) {
           ))}
         </div>
       )}
-
-      <style>{`
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </div>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  wrapper: {
-    display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
-    height: '100dvh',
-    position: 'relative',
-  },
-  terminal: {
-    flex: 1,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  hiddenInput: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    width: 1,
-    height: 1,
-    opacity: 0.01,
-    fontSize: 16,
-    pointerEvents: 'none',
-    zIndex: -1,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'var(--nexus-bg)',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    zIndex: 10,
-  },
-  spinner: {
-    width: 32,
-    height: 32,
-    border: '3px solid var(--nexus-border)',
-    borderTopColor: 'var(--nexus-accent)',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
-  loadingText: {
-    color: 'var(--nexus-text2)',
-    fontSize: 14,
-  },
-  scrollBtn: {
-    position: 'absolute',
-    bottom: 12,
-    right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: '50%',
-    background: 'var(--nexus-accent)',
-    border: 'none',
-    color: '#fff',
-    fontSize: 18,
-    cursor: 'pointer',
-    zIndex: 50,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-    backdropFilter: 'blur(4px)',
-    WebkitBackdropFilter: 'blur(4px)',
-  },
 }

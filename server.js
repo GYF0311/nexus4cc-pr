@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { exec, spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 import { dirname, join, normalize, isAbsolute } from 'path';
-import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync, statSync, rmdirSync } from 'fs';
 import https from 'node:https';
 import multer from 'multer';
 
@@ -359,33 +359,50 @@ function getUploadDir() {
 }
 
 const fileUpload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => cb(null, getUploadDir()),
-    filename: (req, file, cb) => {
-      const id = Math.random().toString(36).slice(2, 8)
-      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_')
-      cb(null, `${id}_${safe}`)
-    }
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 * 1024 } // 100MB
 })
 
 // POST /api/files/upload — 上传文件到 data/uploads/日期/
+// Query: overwrite=1 强制覆盖已存在的文件
 app.post('/api/files/upload', authMiddleware, (req, res, next) => {
   fileUpload.single('file')(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message })
     if (!req.file) return res.status(400).json({ error: 'no file' })
+
     const dateDir = new Date().toISOString().slice(0, 10)
-    const url = `/uploads/${dateDir}/${req.file.filename}`
-    const fullPath = join(UPLOADS_DIR, dateDir, req.file.filename)
-    res.json({
-      ok: true,
-      filename: req.file.filename,
-      url,
-      fullPath,
-      size: req.file.size,
-      originalName: req.file.originalname
-    })
+    const uploadDir = join(UPLOADS_DIR, dateDir)
+    if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true })
+
+    // 清理文件名
+    const safe = req.file.originalname.replace(/[^\x00-\x7F]/g, '_').replace(/[<>:"|?*]/g, '_')
+    const filePath = join(uploadDir, safe)
+    const overwrite = req.query.overwrite === '1'
+
+    // 检查文件是否已存在
+    if (!overwrite && existsSync(filePath)) {
+      return res.status(409).json({
+        error: 'file exists',
+        filename: safe,
+        message: `文件 "${safe}" 已存在`
+      })
+    }
+
+    // 写入文件
+    try {
+      writeFileSync(filePath, req.file.buffer)
+      const url = `/uploads/${dateDir}/${safe}`
+      res.json({
+        ok: true,
+        filename: safe,
+        url,
+        fullPath: filePath,
+        size: req.file.size,
+        originalName: req.file.originalname
+      })
+    } catch (writeErr) {
+      res.status(500).json({ error: writeErr.message })
+    }
   })
 })
 
@@ -441,6 +458,34 @@ app.delete('/api/files/:date/:filename', authMiddleware, (req, res) => {
     } else {
       res.status(404).json({ error: 'file not found' })
     }
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// DELETE /api/files/all — 删除所有上传的文件
+app.delete('/api/files/all', authMiddleware, (req, res) => {
+  try {
+    const dateDirs = readdirSync(UPLOADS_DIR, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+    let deletedCount = 0
+    for (const dateDir of dateDirs) {
+      const dirPath = join(UPLOADS_DIR, dateDir.name)
+      const files = readdirSync(dirPath, { withFileTypes: true })
+        .filter(e => e.isFile())
+      for (const file of files) {
+        const filePath = join(dirPath, file.name)
+        try {
+          unlinkSync(filePath)
+          deletedCount++
+        } catch {}
+      }
+      // 尝试删除空目录
+      try {
+        rmdirSync(dirPath)
+      } catch {}
+    }
+    res.json({ ok: true, deletedCount })
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

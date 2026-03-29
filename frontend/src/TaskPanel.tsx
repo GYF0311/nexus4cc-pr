@@ -139,20 +139,20 @@ export default function TaskPanel({ token, windows, activeWindowName, tmuxSessio
   const activeTask = selectedTask ? (tasks.find(t => t.id === selectedTask.id) ?? selectedTask) : null
 
   return (
-    <div style={s.overlay}>
+    <div className="fixed inset-0 bg-black/40 z-[300] flex items-stretch justify-end">
       <GhostShield />
-      <div style={s.panel}>
+      <div className="w-[440px] max-w-[100vw] bg-nexus-bg border-l border-nexus-border flex flex-col overflow-hidden">
         {/* Header */}
-        <div style={s.header}>
-          <span style={{...s.title, display: 'flex', alignItems: 'center', gap: 8}}><Icon name="clipboard" size={20} />任务面板</span>
-          <button style={{...s.closeBtn, display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={onClose}><Icon name="x" size={20} /></button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-nexus-border shrink-0">
+          <span className="flex items-center gap-2 text-nexus-text text-[15px] font-semibold"><Icon name="clipboard" size={20} />任务面板</span>
+          <button className="flex items-center justify-center bg-transparent border-none text-nexus-text-2 text-2xl cursor-pointer p-0 leading-none" onClick={onClose}><Icon name="x" size={20} /></button>
         </div>
 
         {/* Session selector */}
-        <div style={s.sessionRow}>
-          <span style={s.label}>会话:</span>
+        <div className="flex items-center gap-2 px-5 py-2.5 border-b border-nexus-border shrink-0">
+          <span className="text-nexus-text-2 text-[13px] shrink-0">会话:</span>
           <select
-            style={s.select}
+            className="flex-1 bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text px-2 py-1 text-[13px] font-mono cursor-pointer"
             value={sessionName}
             onChange={e => setSessionName(e.target.value)}
           >
@@ -163,9 +163,9 @@ export default function TaskPanel({ token, windows, activeWindowName, tmuxSessio
         </div>
 
         {/* Prompt input */}
-        <div style={s.inputSection}>
+        <div className="px-5 py-3 border-b border-nexus-border flex flex-col gap-2 shrink-0">
           <textarea
-            style={s.textarea}
+            className="bg-nexus-bg-2 border border-nexus-border rounded-lg text-nexus-text px-3 py-2.5 text-[13px] font-mono resize-none outline-none leading-relaxed"
             value={prompt}
             onChange={e => setPrompt(e.target.value)}
             placeholder="输入任务 prompt，claude -p 非交互执行..."
@@ -177,17 +177,17 @@ export default function TaskPanel({ token, windows, activeWindowName, tmuxSessio
               }
             }}
           />
-          <div style={{ display: 'flex', gap: 8, alignSelf: 'flex-end' }}>
+          <div className="flex gap-2 self-end">
             {isRunning && (
               <button
-                style={{ ...s.sendBtn, background: 'var(--nexus-error)' }}
+                className="bg-nexus-error border-none rounded-md text-white cursor-pointer text-[13px] font-semibold px-4 py-2 self-end transition-opacity duration-200 flex items-center gap-1"
                 onClick={() => abortRef.current?.abort()}
               >
                 <Icon name="x" size={14} /> 取消
               </button>
             )}
             <button
-              style={{ ...s.sendBtn, opacity: isRunning || !prompt.trim() ? 0.5 : 1 }}
+              className={`bg-nexus-accent border-none rounded-md text-white cursor-pointer text-[13px] font-semibold px-4 py-2 self-end transition-opacity duration-200 ${isRunning || !prompt.trim() ? 'opacity-50' : 'opacity-100'}`}
               onClick={runTask}
               disabled={isRunning || !prompt.trim()}
             >
@@ -198,41 +198,34 @@ export default function TaskPanel({ token, windows, activeWindowName, tmuxSessio
 
         {/* Output area */}
         {(isRunning || streamOutput) && (
-          <div style={s.outputSection}>
-            <div style={s.outputHeader}>
-              {isRunning && <span style={s.runningDot} />}
-              <span style={s.outputLabel}>{isRunning ? '执行中' : '输出'}</span>
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-2 border-b border-nexus-border shrink-0">
+              {isRunning && <span className="w-2 h-2 rounded-full bg-nexus-success animate-spin shrink-0" />}
+              <span className="text-nexus-text-2 text-xs font-mono">{isRunning ? '执行中' : '输出'}</span>
             </div>
-            <pre ref={outputRef} style={s.output}>{streamOutput || ' '}</pre>
+            <pre ref={outputRef} className="flex-1 m-0 px-5 py-3 text-nexus-text text-xs font-mono overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">{streamOutput || ' '}</pre>
           </div>
         )}
 
         {/* Task history */}
         {!isRunning && !streamOutput && (
-          <div style={s.historySection}>
-            <div style={s.historyHeader}>历史任务</div>
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="px-5 py-2 text-nexus-text-2 text-xs font-semibold border-b border-nexus-border shrink-0">历史任务</div>
             {tasks.length === 0 ? (
-              <div style={s.empty}>暂无任务记录</div>
+              <div className="p-5 text-nexus-muted text-[13px] text-center">暂无任务记录</div>
             ) : (
-              <div style={s.taskList}>
+              <div className="overflow-y-auto flex-1">
                 {tasks.map(task => (
                   <div
                     key={task.id}
-                    style={{
-                      ...s.taskItem,
-                      ...(activeTask?.id === task.id ? s.taskItemActive : {}),
-                    }}
+                    className={`flex items-center gap-2 px-5 py-2.5 cursor-pointer border-b border-nexus-border transition-colors duration-150 ${activeTask?.id === task.id ? 'bg-nexus-tab-active' : ''}`}
                     onClick={() => setSelectedTask(activeTask?.id === task.id ? null : task)}
                   >
-                    <span style={{
-                      ...s.statusDot,
-                      background: task.status === 'success' ? 'var(--nexus-success)' : task.status === 'running' ? 'var(--nexus-warning)' : 'var(--nexus-error)',
-                      ...(task.status === 'running' ? { animation: 'pulse 1.5s ease-in-out infinite' } : {}),
-                    }} />
-                    <span style={s.taskPrompt} title={task.prompt}>{task.prompt.slice(0, 60)}{task.prompt.length > 60 ? '...' : ''}</span>
-                    {task.source === 'telegram' && <span style={s.sourceBadge}>TG</span>}
-                    <span style={s.taskSession}>{task.session_name}</span>
-                    <button style={{...s.deleteBtn, display: 'flex', alignItems: 'center', justifyContent: 'center'}} onClick={(e) => deleteTask(task.id, e)} title="删除"><Icon name="x" size={14} /></button>
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${task.status === 'success' ? 'bg-nexus-success' : task.status === 'running' ? 'bg-nexus-warning animate-pulse' : 'bg-nexus-error'}`} />
+                    <span className="flex-1 text-nexus-text text-[13px] font-mono overflow-hidden text-ellipsis whitespace-nowrap" title={task.prompt}>{task.prompt.slice(0, 60)}{task.prompt.length > 60 ? '...' : ''}</span>
+                    {task.source === 'telegram' && <span className="bg-nexus-accent text-white text-[9px] font-bold px-1 rounded-[3px] shrink-0 tracking-wider">TG</span>}
+                    <span className="text-nexus-muted text-[11px] shrink-0">{task.session_name}</span>
+                    <button className="flex items-center justify-center bg-transparent border-none text-nexus-muted cursor-pointer text-[11px] px-0.5 shrink-0 leading-none opacity-60" onClick={(e) => deleteTask(task.id, e)} title="删除"><Icon name="x" size={14} /></button>
                   </div>
                 ))}
               </div>
@@ -242,260 +235,30 @@ export default function TaskPanel({ token, windows, activeWindowName, tmuxSessio
 
         {/* Selected task output */}
         {activeTask && !isRunning && (
-          <div style={s.outputSection}>
-            <div style={s.outputHeader}>
-              {activeTask.status === 'running' && <span style={s.runningDot} />}
-              <span style={s.outputLabel}>
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex items-center gap-2 px-5 py-2 border-b border-nexus-border shrink-0">
+              {activeTask.status === 'running' && <span className="w-2 h-2 rounded-full bg-nexus-success animate-spin shrink-0" />}
+              <span className="text-nexus-text-2 text-xs font-mono">
                 {activeTask.session_name} — {activeTask.status === 'running' ? '执行中' : activeTask.status}
                 {activeTask.source === 'telegram' ? ' · TG' : ''}
               </span>
-              <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
+              <div className="flex gap-1 ml-auto">
                 {activeTask.status !== 'running' && (
-                  <button style={s.iconAction} title="重新执行" onClick={() => {
+                  <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer text-[13px] px-1 py-0.5 leading-none rounded" title="重新执行" onClick={() => {
                     setPrompt(activeTask.prompt)
                     setSelectedTask(null)
                   }}>↩</button>
                 )}
-                <button style={s.iconAction} title="复制输出" onClick={() => {
+                <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer text-[13px] px-1 py-0.5 leading-none rounded" title="复制输出" onClick={() => {
                   const text = activeTask.output || activeTask.error || ''
                   if (text) navigator.clipboard.writeText(text).catch(() => {})
                 }}>⎘</button>
               </div>
             </div>
-            <pre style={s.output}>{activeTask.output || activeTask.error || (activeTask.status === 'running' ? '等待输出...' : '(无输出)')}</pre>
+            <pre className="flex-1 m-0 px-5 py-3 text-nexus-text text-xs font-mono overflow-y-auto whitespace-pre-wrap break-words leading-relaxed">{activeTask.output || activeTask.error || (activeTask.status === 'running' ? '等待输出...' : '(无输出)')}</pre>
           </div>
         )}
       </div>
     </div>
   )
-}
-
-const s: Record<string, React.CSSProperties> = {
-  overlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0,0,0,0.4)',
-    zIndex: 300,
-    display: 'flex',
-    alignItems: 'stretch',
-    justifyContent: 'flex-end',
-  },
-  panel: {
-    width: 440,
-    maxWidth: '100vw',
-    background: 'var(--nexus-bg)',
-    borderLeft: '1px solid var(--nexus-border)',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '16px 20px',
-    borderBottom: '1px solid var(--nexus-border)',
-    flexShrink: 0,
-  },
-  title: {
-    color: 'var(--nexus-text)',
-    fontSize: 15,
-    fontWeight: 600,
-  },
-  closeBtn: {
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-text2)',
-    fontSize: 24,
-    cursor: 'pointer',
-    padding: 0,
-    lineHeight: 1,
-  },
-  sessionRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '10px 20px',
-    borderBottom: '1px solid var(--nexus-border)',
-    flexShrink: 0,
-  },
-  label: {
-    color: 'var(--nexus-text2)',
-    fontSize: 13,
-    flexShrink: 0,
-  },
-  select: {
-    flex: 1,
-    background: 'var(--nexus-bg2)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 6,
-    color: 'var(--nexus-text)',
-    padding: '4px 8px',
-    fontSize: 13,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    cursor: 'pointer',
-  },
-  inputSection: {
-    padding: '12px 20px',
-    borderBottom: '1px solid var(--nexus-border)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 8,
-    flexShrink: 0,
-  },
-  textarea: {
-    background: 'var(--nexus-bg2)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 8,
-    color: 'var(--nexus-text)',
-    padding: '10px 12px',
-    fontSize: 13,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    resize: 'none',
-    outline: 'none',
-    lineHeight: 1.5,
-  },
-  sendBtn: {
-    background: 'var(--nexus-accent)',
-    border: 'none',
-    borderRadius: 6,
-    color: '#fff',
-    cursor: 'pointer',
-    fontSize: 13,
-    fontWeight: 600,
-    padding: '8px 16px',
-    alignSelf: 'flex-end',
-    transition: 'opacity 0.2s',
-  },
-  outputSection: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  outputHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '8px 20px',
-    borderBottom: '1px solid var(--nexus-border)',
-    flexShrink: 0,
-  },
-  runningDot: {
-    width: 8,
-    height: 8,
-    borderRadius: '50%',
-    background: 'var(--nexus-success)',
-    animation: 'spin 1s linear infinite',
-    flexShrink: 0,
-  },
-  outputLabel: {
-    color: 'var(--nexus-text2)',
-    fontSize: 12,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-  },
-  output: {
-    flex: 1,
-    margin: 0,
-    padding: '12px 20px',
-    color: 'var(--nexus-text)',
-    fontSize: 12,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    overflowY: 'auto',
-    whiteSpace: 'pre-wrap',
-    wordBreak: 'break-word',
-    lineHeight: 1.5,
-  },
-  historySection: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-    overflow: 'hidden',
-  },
-  historyHeader: {
-    padding: '8px 20px',
-    color: 'var(--nexus-text2)',
-    fontSize: 12,
-    fontWeight: 600,
-    borderBottom: '1px solid var(--nexus-border)',
-    flexShrink: 0,
-  },
-  empty: {
-    padding: '20px',
-    color: 'var(--nexus-muted)',
-    fontSize: 13,
-    textAlign: 'center',
-  },
-  taskList: {
-    overflowY: 'auto',
-    flex: 1,
-  },
-  taskItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 8,
-    padding: '10px 20px',
-    cursor: 'pointer',
-    borderBottom: '1px solid var(--nexus-border)',
-    transition: 'background 0.15s',
-  },
-  taskItemActive: {
-    background: 'var(--nexus-tab-active)',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: '50%',
-    flexShrink: 0,
-  },
-  taskPrompt: {
-    flex: 1,
-    color: 'var(--nexus-text)',
-    fontSize: 13,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  taskSession: {
-    color: 'var(--nexus-muted)',
-    fontSize: 11,
-    flexShrink: 0,
-  },
-  sourceBadge: {
-    background: 'var(--nexus-accent)',
-    color: '#fff',
-    fontSize: 9,
-    fontWeight: 700,
-    padding: '1px 4px',
-    borderRadius: 3,
-    flexShrink: 0,
-    letterSpacing: 0.5,
-  },
-  deleteBtn: {
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-muted)',
-    cursor: 'pointer',
-    fontSize: 11,
-    padding: '0 2px',
-    flexShrink: 0,
-    lineHeight: 1,
-    opacity: 0.6,
-  },
-  iconAction: {
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-text2)',
-    cursor: 'pointer',
-    fontSize: 13,
-    padding: '2px 4px',
-    lineHeight: 1,
-    borderRadius: 4,
-  },
 }

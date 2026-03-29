@@ -114,126 +114,78 @@ export default function FilePanel({ token, onClose }: Props) {
     }
   }
 
+  async function deleteAllFiles() {
+    if (!confirm(`确定要删除所有上传的文件吗?\n共 ${totalFiles} 个文件，此操作不可恢复。`)) return
+    try {
+      const r = await fetch('/api/files/all', {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (r.ok) {
+        fetchFiles()
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   const totalFiles = groups.reduce((sum, g) => sum + g.files.length, 0)
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 450,
-        background: 'var(--nexus-bg)',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
-    >
+    <div className="fixed inset-0 z-[450] bg-nexus-bg flex flex-col">
       {/* Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '14px 16px',
-          borderBottom: '1px solid var(--nexus-border)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="flex items-center justify-between px-4 py-3.5 border-b border-nexus-border flex-shrink-0">
+        <div className="flex items-center gap-2.5">
           <Icon name="folder" size={20} />
-          <span style={{ color: 'var(--nexus-text)', fontWeight: 600, fontSize: 16 }}>
+          <span className="text-nexus-text font-semibold text-base">
             上传文件
           </span>
-          <span
-            style={{
-              color: 'var(--nexus-muted)',
-              fontSize: 13,
-              background: 'var(--nexus-bg2)',
-              padding: '2px 8px',
-              borderRadius: 10,
-            }}
-          >
+          <span className="text-nexus-muted text-[13px] bg-nexus-bg-2 px-2 py-0.5 rounded-[10px]">
             {totalFiles}
           </span>
         </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'var(--nexus-text2)',
-            cursor: 'pointer',
-            padding: '6px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: 6,
-          }}
-        >
-          <Icon name="x" size={20} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {totalFiles > 0 && (
+            <button
+              onClick={deleteAllFiles}
+              className="bg-transparent border border-nexus-error text-nexus-error cursor-pointer px-2.5 py-1.5 flex items-center gap-1 rounded-md text-xs font-medium transition-all duration-100 active:scale-95"
+              title="清除所有文件"
+            >
+              <Icon name="trash" size={14} />
+              清除全部
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1.5 flex items-center justify-center rounded-md"
+          >
+            <Icon name="x" size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
-      <div
-        style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '12px 16px',
-        }}
-      >
+      <div className="flex-1 overflow-y-auto px-4 py-3">
         {loading ? (
-          <div
-            style={{
-              color: 'var(--nexus-muted)',
-              textAlign: 'center',
-              padding: 40,
-              fontSize: 14,
-            }}
-          >
+          <div className="text-nexus-muted text-center py-10 text-sm">
             加载中...
           </div>
         ) : groups.length === 0 ? (
-          <div
-            style={{
-              color: 'var(--nexus-muted)',
-              textAlign: 'center',
-              padding: 40,
-              fontSize: 14,
-            }}
-          >
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📁</div>
+          <div className="text-nexus-muted text-center py-10 text-sm">
+            <div className="text-5xl mb-3">📁</div>
             <div>暂无上传文件</div>
-            <div style={{ fontSize: 12, marginTop: 8, opacity: 0.7 }}>
+            <div className="text-xs mt-2 opacity-70">
               拖拽文件到终端或粘贴图片即可上传
             </div>
           </div>
         ) : (
           groups.map((group) => (
-            <div key={group.date} style={{ marginBottom: 20 }}>
-              <div
-                style={{
-                  color: 'var(--nexus-muted)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: 0.5,
-                  marginBottom: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
+            <div key={group.date} className="mb-5">
+              <div className="text-nexus-muted text-xs font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5">
                 <span>{formatDate(group.date)}</span>
-                <span style={{ opacity: 0.5 }}>({group.files.length})</span>
+                <span className="opacity-50">({group.files.length})</span>
               </div>
-              <div
-                style={{
-                  background: 'var(--nexus-bg2)',
-                  borderRadius: 8,
-                  border: '1px solid var(--nexus-border)',
-                  overflow: 'hidden',
-                }}
-              >
+              <div className="bg-nexus-bg-2 rounded-lg border border-nexus-border overflow-hidden">
                 {group.files.map((file, idx) => {
                   const fullPath = `/mnt/c/Users/libra/work/nexus/data/uploads/${group.date}/${file.name}`
                   const isCopied = copiedUrl === file.url
@@ -241,61 +193,23 @@ export default function FilePanel({ token, onClose }: Props) {
                   return (
                     <div
                       key={file.name}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        padding: '10px 12px',
-                        borderBottom:
-                          idx < group.files.length - 1
-                            ? '1px solid var(--nexus-border)'
-                            : 'none',
-                      }}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 ${idx < group.files.length - 1 ? 'border-b border-nexus-border' : ''}`}
                     >
-                      <span style={{ fontSize: 16 }}>{isImage ? '🖼️' : '📄'}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+                      <span className="text-base">{isImage ? '🖼️' : '📄'}</span>
+                      <div className="flex-1 min-w-0">
                         <div
-                          style={{
-                            color: 'var(--nexus-text)',
-                            fontSize: 13,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            fontFamily: 'Menlo, Monaco, monospace',
-                          }}
+                          className="text-nexus-text text-[13px] overflow-hidden text-ellipsis whitespace-nowrap font-mono"
                           title={file.name}
                         >
                           {file.name}
                         </div>
-                        <div
-                          style={{
-                            color: 'var(--nexus-muted)',
-                            fontSize: 11,
-                            marginTop: 2,
-                          }}
-                        >
+                        <div className="text-nexus-muted text-[11px] mt-0.5">
                           {formatSize(file.size)}
                         </div>
                       </div>
                       <button
                         onClick={() => copyToClipboard(file.url, fullPath)}
-                        style={{
-                          background: isCopied
-                            ? 'var(--nexus-success)'
-                            : 'transparent',
-                          border: isCopied
-                            ? 'none'
-                            : '1px solid var(--nexus-border)',
-                          borderRadius: 6,
-                          color: isCopied ? '#fff' : 'var(--nexus-text2)',
-                          cursor: 'pointer',
-                          padding: '6px 10px',
-                          fontSize: 12,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          transition: 'all 0.15s',
-                        }}
+                        className={`rounded-md cursor-pointer text-xs flex items-center gap-1 transition-all duration-150 ${isCopied ? 'bg-nexus-success border-none text-white px-2.5 py-1.5' : 'bg-transparent border border-nexus-border text-nexus-text-2 px-2.5 py-1.5'}`}
                         title="复制完整路径"
                       >
                         <Icon name={isCopied ? 'check' : 'copy'} size={14} />
@@ -303,17 +217,7 @@ export default function FilePanel({ token, onClose }: Props) {
                       </button>
                       <button
                         onClick={() => deleteFile(group.date, file.name)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--nexus-error)',
-                          cursor: 'pointer',
-                          padding: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          opacity: 0.6,
-                        }}
+                        className="bg-transparent border-none text-nexus-error cursor-pointer p-1.5 flex items-center justify-center opacity-60"
                         title="删除"
                       >
                         <Icon name="trash" size={16} />
@@ -328,15 +232,7 @@ export default function FilePanel({ token, onClose }: Props) {
       </div>
 
       {/* Footer hint */}
-      <div
-        style={{
-          padding: '12px 16px',
-          borderTop: '1px solid var(--nexus-border)',
-          color: 'var(--nexus-muted)',
-          fontSize: 12,
-          textAlign: 'center',
-        }}
-      >
+      <div className="px-4 py-3 border-t border-nexus-border text-nexus-muted text-xs text-center">
         文件保存在服务器 data/uploads/ 目录，不进入 git 追踪
       </div>
     </div>

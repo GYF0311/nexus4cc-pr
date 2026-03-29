@@ -135,7 +135,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
         }
       })
       .catch(() => {})
-  }, [])
+  }, [token])
 
   // 根元素：阻止 touchstart 默认行为，防止键盘弹出。
   // 但滚动区及其子元素（含拖拽手柄）跳过 preventDefault，
@@ -293,14 +293,14 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   // ---- 渲染按键 ----
   function renderKeys(ids: string[]) {
     return (
-      <div style={isPC ? s.rowPC : s.row}>
+      <div className={isPC ? 'flex flex-wrap gap-1.5 px-3 py-1' : 'flex flex-wrap gap-1 px-1.5 py-0.5'}>
         {ids.map(id => {
           const key = KEY_MAP[id]
           if (!key) return null
           return (
             <button
               key={id}
-              style={isPC ? s.keyPC : s.key}
+              className={isPC ? keyPCClass : keyClass}
               onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
             >
               {key.label}
@@ -316,30 +316,30 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
     const editContent = (
       <>
         {/* 头部 */}
-        <div style={isPC ? s.editHeaderPC : s.editHeader}>
+        <div className={isPC ? 'flex items-center justify-between px-5 py-4 border-b border-nexus-border shrink-0' : 'flex items-center justify-between px-2.5 py-2 border-b border-nexus-border shrink-0'}>
           <div>
-            <span style={isPC ? s.editTitlePC : s.editTitle}>工具栏编辑</span>
-            <div style={isPC ? s.editHintPC : s.editHint}>
+            <span className={isPC ? 'text-nexus-text text-base font-semibold' : 'text-nexus-text text-sm font-semibold'}>工具栏编辑</span>
+            <div className={isPC ? 'text-nexus-muted text-xs mt-1' : 'text-nexus-muted text-[10px] mt-0.5'}>
               {existsUserDefault ? '将恢复到您保存的默认配置' : '将恢复到出厂配置'}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onPointerDown={(e) => { e.preventDefault(); resetConfig() }} style={isPC ? s.editBtnSmPC : s.editBtnSm}>重置</button>
+          <div className="flex gap-2">
+            <button onPointerDown={(e) => { e.preventDefault(); resetConfig() }} className={isPC ? editBtnSmPCClass : editBtnSmClass}>重置</button>
             <button
               onPointerDown={(e) => { e.preventDefault(); saveAsDefault() }}
-              style={savedFlash ? { ...(isPC ? s.editBtnSmPC : s.editBtnSm), color: 'var(--nexus-success)', borderColor: 'var(--nexus-success)' } : (isPC ? s.editBtnSmPC : s.editBtnSm)}
+              className={savedFlash ? (isPC ? 'text-nexus-success border-nexus-success ' + editBtnSmPCClass : 'text-nexus-success border-nexus-success ' + editBtnSmClass) : (isPC ? editBtnSmPCClass : editBtnSmClass)}
             >
               {savedFlash ? '已保存' : '存为默认'}
             </button>
-            <button onPointerDown={(e) => { e.preventDefault(); setEditing(false) }} style={isPC ? s.editBtnPrimaryPC : s.editBtnPrimary}>完成</button>
+            <button onPointerDown={(e) => { e.preventDefault(); setEditing(false) }} className={isPC ? editBtnPrimaryPCClass : editBtnPrimaryClass}>完成</button>
           </div>
         </div>
 
         {/* 列表 */}
-        <div ref={editScrollRef} style={isPC ? s.editScrollPC : s.editScroll}>
+        <div ref={editScrollRef} className={isPC ? 'overflow-y-auto flex-1 py-2' : 'overflow-y-auto flex-1'}>
           {(['pinned', 'expanded'] as const).map(section => (
-            <div key={section} style={s.editSection}>
-              <div style={isPC ? s.editSectionTitlePC : s.editSectionTitle}>
+            <div key={section} className="mb-1">
+              <div className={isPC ? 'text-nexus-text-2 text-xs px-5 py-2.5 pb-1.5 tracking-wide uppercase' : 'text-nexus-text-2 text-[11px] px-2.5 py-1.5 pb-[3px] tracking-wide uppercase'}>
                 {section === 'pinned' ? '固定行（始终显示）' : '展开区'}
               </div>
               {getDisplayIds(section).map((id, idx) => {
@@ -350,15 +350,15 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
                 return (
                   <div
                     key={id}
-                    style={{
-                      ...(isPC ? s.editRowPC : s.editRow),
-                      ...(isDragging ? s.editRowTarget : {}),
-                      ...(isSource   ? s.editRowSource : {}),
-                    }}
+                    className={[
+                      isPC ? 'flex items-center px-5 h-12 gap-3 border-b border-nexus-border box-border' : 'flex items-center px-2.5 h-12 gap-2 border-b border-nexus-border box-border',
+                      isDragging ? 'bg-[color-mix(in_srgb,var(--nexus-accent)_12%,transparent)] border-nexus-accent' : '',
+                      isSource ? 'opacity-[0.35]' : ''
+                    ].filter(Boolean).join(' ')}
                   >
                     {/* 拖拽手柄 */}
                     <div
-                      style={s.dragHandle}
+                      className="text-nexus-text-2 text-base cursor-grab py-2 px-1 shrink-0 touch-none flex items-center"
                       onTouchStart={(e) => { e.stopPropagation(); onDragStart(section, idx, e.touches[0].clientY) }}
                       onTouchMove={(e) => { e.stopPropagation(); onDragMove(e.touches[0].clientY) }}
                       onTouchEnd={() => onDragEnd()}
@@ -370,10 +370,10 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
                     >
                       <Icon name="grip" size={16} />
                     </div>
-                    <span style={isPC ? s.editLabelPC : s.editLabel}>{key.label}</span>
-                    <span style={isPC ? s.editDescPC : s.editDesc}>{key.desc}</span>
+                    <span className={isPC ? 'text-nexus-text font-mono text-sm min-w-[60px] shrink-0' : 'text-nexus-text font-mono text-[13px] min-w-[48px] shrink-0'}>{key.label}</span>
+                    <span className={isPC ? 'text-nexus-text-2 text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap' : 'text-nexus-text-2 text-[11px] flex-1 overflow-hidden text-ellipsis whitespace-nowrap'}>{key.desc}</span>
                     <button
-                      style={{ ...(isPC ? s.removeBtnPC : s.removeBtn), display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      className={isPC ? 'bg-transparent border-none text-nexus-error cursor-pointer text-xl px-2 py-1 shrink-0 leading-none flex items-center justify-center' : 'bg-transparent border-none text-nexus-error cursor-pointer text-lg px-0.5 shrink-0 leading-none flex items-center justify-center'}
                       onPointerDown={(e) => { e.preventDefault(); removeKey(section, id) }}
                       title="移除"
                     >
@@ -387,15 +387,15 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
 
           {/* 可添加 */}
           {availableKeys.length > 0 && (
-            <div style={s.editSection}>
-              <div style={isPC ? s.editSectionTitlePC : s.editSectionTitle}>可添加</div>
+            <div className="mb-1">
+              <div className={isPC ? 'text-nexus-text-2 text-xs px-5 py-2.5 pb-1.5 tracking-wide uppercase' : 'text-nexus-text-2 text-[11px] px-2.5 py-1.5 pb-[3px] tracking-wide uppercase'}>可添加</div>
               {availableKeys.map(key => (
-                <div key={key.id} style={isPC ? s.editRowPC : s.editRow}>
-                  <span style={isPC ? s.editLabelPC : s.editLabel}>{key.label}</span>
-                  <span style={isPC ? s.editDescPC : s.editDesc}>{key.desc}</span>
-                  <div style={{ display: 'flex', gap: 4, marginLeft: 'auto', flexShrink: 0 }}>
-                    <button style={isPC ? s.addBtnPC : s.addBtn} onPointerDown={(e) => { e.preventDefault(); addKey('pinned', key.id) }}>固定</button>
-                    <button style={isPC ? s.addBtnPC : s.addBtn} onPointerDown={(e) => { e.preventDefault(); addKey('expanded', key.id) }}>展开</button>
+                <div key={key.id} className={isPC ? 'flex items-center px-5 h-12 gap-3 border-b border-nexus-border box-border' : 'flex items-center px-2.5 h-12 gap-2 border-b border-nexus-border box-border'}>
+                  <span className={isPC ? 'text-nexus-text font-mono text-sm min-w-[60px] shrink-0' : 'text-nexus-text font-mono text-[13px] min-w-[48px] shrink-0'}>{key.label}</span>
+                  <span className={isPC ? 'text-nexus-text-2 text-xs flex-1 overflow-hidden text-ellipsis whitespace-nowrap' : 'text-nexus-text-2 text-[11px] flex-1 overflow-hidden text-ellipsis whitespace-nowrap'}>{key.desc}</span>
+                  <div className="flex gap-1 ml-auto shrink-0">
+                    <button className={isPC ? addBtnPCClass : addBtnClass} onPointerDown={(e) => { e.preventDefault(); addKey('pinned', key.id) }}>固定</button>
+                    <button className={isPC ? addBtnPCClass : addBtnClass} onPointerDown={(e) => { e.preventDefault(); addKey('expanded', key.id) }}>展开</button>
                   </div>
                 </div>
               ))}
@@ -407,9 +407,9 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
 
     if (isPC) {
       return (
-        <div style={s.desktopOverlay}>
+        <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-5">
           <GhostShield />
-          <div ref={rootRef} style={s.desktopEditPanel}>
+          <div ref={rootRef} className="bg-nexus-bg border border-nexus-border rounded-xl shrink-0 flex flex-col w-full max-w-[600px] max-h-[70vh] shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden">
             {editContent}
           </div>
         </div>
@@ -417,7 +417,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
     }
 
     return (
-      <div ref={rootRef} style={s.editPanel}>
+      <div ref={rootRef} className="bg-nexus-bg border-t border-nexus-border shrink-0 flex flex-col max-h-[55vh]">
         <GhostShield />
         {editContent}
       </div>
@@ -427,17 +427,12 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   // ---- 统一粘贴 / 上传面板 ----
   const pasteBoxEl = showPasteBox && createPortal(
     <>
-      <div style={{ position: 'fixed', inset: 0, zIndex: 700 }} onPointerDown={() => setShowPasteBox(false)} />
-      <div style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 701,
-        background: 'var(--nexus-bg)', borderTop: '1px solid var(--nexus-border)',
-        borderRadius: '12px 12px 0 0', padding: '14px 16px 24px',
-        boxShadow: '0 -4px 24px rgba(0,0,0,0.35)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <span style={{ color: 'var(--nexus-text)', fontSize: 14, fontWeight: 600 }}>粘贴 / 上传</span>
+      <div className="fixed inset-0 z-[700]" onPointerDown={() => setShowPasteBox(false)} />
+      <div className="fixed bottom-0 left-0 right-0 z-[701] bg-nexus-bg border-t border-nexus-border rounded-t-xl p-3.5 pb-6 shadow-[0_-4px_24px_rgba(0,0,0,0.35)]">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-nexus-text text-sm font-semibold">粘贴 / 上传</span>
           <button onPointerDown={(e) => { e.preventDefault(); setShowPasteBox(false) }}
-            style={{ background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', padding: 4, display: 'flex' }}>
+            className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex">
             <Icon name="x" size={20} />
           </button>
         </div>
@@ -445,12 +440,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           ref={pasteBoxRef}
           rows={3}
           placeholder="长按此处粘贴文本或图片…"
-          style={{
-            width: '100%', boxSizing: 'border-box', background: 'var(--nexus-bg2)',
-            border: '1px solid var(--nexus-border)', borderRadius: 8,
-            color: 'var(--nexus-text)', fontSize: 14, padding: '10px', resize: 'none',
-            outline: 'none', fontFamily: 'inherit', display: 'block',
-          }}
+          className="w-full box-border bg-nexus-bg-2 border border-nexus-border rounded-lg text-nexus-text text-sm p-2.5 resize-none outline-none font-inherit block"
           onPaste={(e) => {
             const items = e.clipboardData?.items
             if (items) {
@@ -469,14 +459,9 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
             }, 0)
           }}
         />
-        <label style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-          marginTop: 10, padding: '10px', borderRadius: 8, cursor: 'pointer',
-          background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)',
-          color: 'var(--nexus-text2)', fontSize: 13,
-        }}>
+        <label className="flex items-center justify-center gap-2 mt-2.5 p-2.5 rounded-lg cursor-pointer bg-nexus-bg-2 border border-nexus-border text-nexus-text-2 text-[13px]">
           <Icon name="paperclip" size={16} />选择文件
-          <input ref={pasteFileRef} type="file" accept="*/*" style={{ display: 'none' }}
+          <input ref={pasteFileRef} type="file" accept="*/*" className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (file && onUploadFile) { onUploadFile(file); setShowPasteBox(false) }
@@ -496,7 +481,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
         ref={fileInputRef}
         type="file"
         accept="image/*,video/*"
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file && onUploadFile) { onUploadFile(file) }
@@ -507,7 +492,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
         ref={pasteFileRef}
         type="file"
         accept="*/*"
-        style={{ display: 'none' }}
+        className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]
           if (file && onUploadFile) { onUploadFile(file) }
@@ -521,30 +506,30 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   if (embedded) {
     const allEmbedded = [...config.pinned, ...(collapsed ? [] : config.expanded)]
     return (
-      <div ref={rootRef} style={{ borderTop: '1px solid var(--nexus-border)', flexShrink: 0, background: 'var(--nexus-bg)' }}>
+      <div ref={rootRef} className="border-t border-nexus-border shrink-0 bg-nexus-bg">
         {/* Section header */}
-        <div style={{ display: 'flex', alignItems: 'center', padding: '5px 8px', gap: 2 }}>
-          <span style={{ fontSize: 10, color: 'var(--nexus-muted)', flex: 1, letterSpacing: 0.6, textTransform: 'uppercase' as const }}>快捷键</span>
+        <div className="flex items-center px-2 py-1 gap-0.5">
+          <span className="text-[10px] text-nexus-muted flex-1 tracking-wide uppercase">快捷键</span>
           <button
-            style={s.iconBtnPC}
+            className={iconBtnPCClass}
             onPointerDown={(e) => { e.preventDefault(); setEditing(true) }}
             title="编辑快捷键"
           ><Icon name="pencil" size={14} /></button>
           <button
-            style={s.iconBtnPC}
+            className={iconBtnPCClass}
             onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }}
             title={collapsed ? '展开' : '收起'}
           ><Icon name={collapsed ? 'chevronUp' : 'chevronDown'} size={14} /></button>
         </div>
         {/* Key grid */}
-        <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: 3, padding: '0 8px 8px' }}>
+        <div className="flex flex-wrap gap-[3px] px-2 pb-2">
           {allEmbedded.map(id => {
             const key = KEY_MAP[id]
             if (!key) return null
             return (
               <button
                 key={id}
-                style={s.keyEmbedded}
+                className={keyEmbeddedClass}
                 onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
                 title={key.desc}
               >{key.label}</button>
@@ -559,23 +544,23 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   // ---- 正常工具栏 ----
   if (isPC) {
     return (
-      <div ref={rootRef} style={s.containerPC}>
+      <div ref={rootRef} className="bg-nexus-bg border-t border-nexus-border select-none shrink-0 w-full">
         {fileInputsEl}
         {/* PC: 控制按钮 + 固定键同一行 */}
-        <div style={s.topBarPC}>
-          <button style={s.iconBtnPC} onPointerDown={(e) => { e.preventDefault(); setEditing(true) }} title="编辑快捷键"><Icon name="pencil" size={18} /></button>
-          <button style={s.iconBtnPC} onPointerDown={(e) => { e.preventDefault(); onToggleTheme() }} title="切换主题">
+        <div className="flex items-center px-3 py-1 gap-1.5 h-11 box-border">
+          <button className={iconBtnPCClass} onPointerDown={(e) => { e.preventDefault(); setEditing(true) }} title="编辑快捷键"><Icon name="pencil" size={18} /></button>
+          <button className={iconBtnPCClass} onPointerDown={(e) => { e.preventDefault(); onToggleTheme() }} title="切换主题">
             <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} size={18} />
           </button>
           {/* 固定键：始终显示，占据中间空间 */}
-          <div style={s.pinnedRowPC}>
+          <div className="flex gap-1.5 flex-wrap flex-1 ml-2 items-center">
             {config.pinned.map(id => {
               const key = KEY_MAP[id]
               if (!key) return null
               return (
                 <button
                   key={id}
-                  style={s.keyPC}
+                  className={keyPCClass}
                   onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
                 >
                   {key.label}
@@ -585,20 +570,20 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           </div>
           {/* 右侧按钮组 */}
           {onOpenFiles && (
-            <button style={s.iconBtnPC} onPointerDown={(e) => { e.preventDefault(); onOpenFiles() }} title="文件列表">
+            <button className={iconBtnPCClass} onPointerDown={(e) => { e.preventDefault(); onOpenFiles() }} title="文件列表">
               <Icon name="folder" size={18} />
             </button>
           )}
           {onOpenTasks && (
-            <button style={{ ...s.iconBtnPC, position: 'relative' }} onPointerDown={(e) => { e.preventDefault(); onOpenTasks() }} title="任务面板">
+            <button className={`${iconBtnPCClass} relative`} onPointerDown={(e) => { e.preventDefault(); onOpenTasks() }} title="任务面板">
               <Icon name="clipboard" size={18} />
-              {!!runningTaskCount && <span style={{ position: 'absolute', top: 2, right: 2, width: 8, height: 8, background: 'var(--nexus-success)', borderRadius: '50%' }} />}
+              {!!runningTaskCount && <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-nexus-success rounded-full" />}
             </button>
           )}
           {/* 上传按钮 */}
           <button
             ref={uploadBtnRef}
-            style={{ ...s.iconBtnPC, position: 'relative' }}
+            className={`${iconBtnPCClass} relative`}
             onPointerDown={(e) => {
               e.preventDefault()
               if (!showUploadMenu) {
@@ -616,13 +601,13 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           {showUploadMenu && createPortal(
             <>
               <GhostShield />
-              <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} onPointerDown={() => setShowUploadMenu(false)} />
-              <div style={{ position: 'fixed', bottom: uploadMenuPos.bottom, right: uploadMenuPos.right, background: 'var(--nexus-menu-bg)', border: '1px solid var(--nexus-border)', borderRadius: 8, padding: '4px 0', minWidth: 120, zIndex: 400, boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
-                <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); setShowUploadMenu(false) }}>
+              <div className="fixed inset-0 z-[300]" onPointerDown={() => setShowUploadMenu(false)} />
+              <div className="fixed bg-nexus-menu-bg border border-nexus-border rounded-lg py-1 min-w-[120px] z-[400] shadow-[0_4px_16px_rgba(0,0,0,0.3)]" style={{ bottom: uploadMenuPos.bottom, right: uploadMenuPos.right }}>
+                <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); setShowUploadMenu(false) }}>
                   <Icon name="image" size={16} />
                   <span>相册</span>
                 </button>
-                <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); pasteFileRef.current?.click(); setShowUploadMenu(false) }}>
+                <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); pasteFileRef.current?.click(); setShowUploadMenu(false) }}>
                   <Icon name="folder" size={16} />
                   <span>文件</span>
                 </button>
@@ -631,26 +616,26 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
             document.body
           )}
           {onOpenSettings && (
-            <button style={s.iconBtnPC} onPointerDown={(e) => { e.preventDefault(); onOpenSettings() }} title="设置">
+            <button className={iconBtnPCClass} onPointerDown={(e) => { e.preventDefault(); onOpenSettings() }} title="设置">
               <Icon name="settings" size={18} />
             </button>
           )}
-          <button style={s.iconBtnPC} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }} title={collapsed ? '展开' : '收起'}>
+          <button className={iconBtnPCClass} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }} title={collapsed ? '展开' : '收起'}>
             <Icon name={collapsed ? 'chevronUp' : 'chevronDown'} size={18} />
           </button>
         </div>
         {/* 展开区：非折叠时显示第二行 */}
         {!collapsed && (
-          <div style={s.expandedRowsPC}>
+          <div className="pb-2">
             {chunk(config.expanded, 16).map((row, i) => (
-              <div key={i} style={s.rowPC}>
+              <div key={i} className="flex flex-wrap gap-1.5 px-3 py-1">
                 {row.map(id => {
                   const key = KEY_MAP[id]
                   if (!key) return null
                   return (
                     <button
                       key={id}
-                      style={s.keyPC}
+                      className={keyPCClass}
                       onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
                     >
                       {key.label}
@@ -667,13 +652,13 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
   }
 
   return (
-    <div ref={rootRef} style={s.container}>
+    <div ref={rootRef} className="bg-nexus-bg border-t border-nexus-border select-none shrink-0">
       {fileInputsEl}
-      <div style={s.topBar}>
-        <div style={{ flex: 1 }} />
+      <div className="flex items-center py-[3px] px-1.5 gap-1">
+        <div className="flex-1" />
         {/* 上传按钮 - 显示自定义面板 */}
         <button
-          style={s.iconBtn}
+          className={iconBtnClass}
           onPointerDown={(e) => {
             e.preventDefault()
             if (!showUploadMenu) {
@@ -689,13 +674,13 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
         {showUploadMenu && createPortal(
           <>
             <GhostShield />
-            <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} onPointerDown={() => setShowUploadMenu(false)} />
-            <div style={{ position: 'fixed', bottom: uploadMenuPos.bottom, right: uploadMenuPos.right, background: 'var(--nexus-menu-bg)', border: '1px solid var(--nexus-border)', borderRadius: 8, padding: '4px 0', minWidth: 120, zIndex: 400, boxShadow: '0 -4px 16px rgba(0,0,0,0.3)' }}>
-              <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); setShowUploadMenu(false) }}>
+            <div className="fixed inset-0 z-[300]" onPointerDown={() => setShowUploadMenu(false)} />
+            <div className="fixed bg-nexus-menu-bg border border-nexus-border rounded-lg py-1 min-w-[120px] z-[400] shadow-[0_-4px_16px_rgba(0,0,0,0.3)]" style={{ bottom: uploadMenuPos.bottom, right: uploadMenuPos.right }}>
+              <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); fileInputRef.current?.click(); setShowUploadMenu(false) }}>
                 <Icon name="image" size={16} />
                 <span>相册</span>
               </button>
-              <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); pasteFileRef.current?.click(); setShowUploadMenu(false) }}>
+              <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); pasteFileRef.current?.click(); setShowUploadMenu(false) }}>
                 <Icon name="folder" size={16} />
                 <span>文件</span>
               </button>
@@ -704,10 +689,10 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           document.body
         )}
         {/* quick menu */}
-        <div style={{ position: 'relative' }}>
+        <div className="relative">
           <button
             ref={menuBtnRef}
-            style={s.iconBtn}
+            className={iconBtnClass}
             onPointerDown={(e) => {
               e.preventDefault()
               if (!showQuickMenu) {
@@ -721,24 +706,24 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
           {showQuickMenu && createPortal(
             <>
               <GhostShield />
-              <div style={{ position: 'fixed', inset: 0, zIndex: 300 }} onPointerDown={() => setShowQuickMenu(false)} />
-              <div style={{ position: 'fixed', bottom: menuPos.bottom, right: menuPos.right, background: 'var(--nexus-menu-bg)', border: '1px solid var(--nexus-border)', borderRadius: 8, padding: '4px 0', minWidth: 160, zIndex: 400, boxShadow: '0 -4px 16px rgba(0,0,0,0.3)' }}>
-                <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); onToggleTheme(); setShowQuickMenu(false) }}>
+              <div className="fixed inset-0 z-[300]" onPointerDown={() => setShowQuickMenu(false)} />
+              <div className="fixed bg-nexus-menu-bg border border-nexus-border rounded-lg py-1 min-w-[160px] z-[400] shadow-[0_-4px_16px_rgba(0,0,0,0.3)]" style={{ bottom: menuPos.bottom, right: menuPos.right }}>
+                <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); onToggleTheme(); setShowQuickMenu(false) }}>
                   <Icon name={themeMode === 'dark' ? 'sun' : 'moon'} size={16} />
                   <span>{themeMode === 'dark' ? '切换亮色' : '切换暗色'}</span>
                 </button>
-                <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); setEditing(true); setShowQuickMenu(false) }}>
+                <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); setEditing(true); setShowQuickMenu(false) }}>
                   <Icon name="pencil" size={16} /><span>编辑快捷键</span>
                 </button>
                 {onOpenTasks && (
-                  <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); onOpenTasks(); setShowQuickMenu(false) }}>
+                  <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); onOpenTasks(); setShowQuickMenu(false) }}>
                     <Icon name="clipboard" size={16} />
                     <span>任务面板</span>
-                    {!!runningTaskCount && <span style={{ marginLeft: 'auto', background: 'var(--nexus-success)', color: '#fff', borderRadius: 8, padding: '1px 6px', fontSize: 11 }}>{runningTaskCount}</span>}
+                    {!!runningTaskCount && <span className="ml-auto bg-nexus-success text-white rounded-lg px-1.5 py-[1px] text-[11px]">{runningTaskCount}</span>}
                   </button>
                 )}
                 {onOpenFiles && (
-                  <button style={s.quickMenuItem} onPointerDown={(e) => { e.preventDefault(); onOpenFiles(); setShowQuickMenu(false) }}>
+                  <button className={quickMenuItemClass} onPointerDown={(e) => { e.preventDefault(); onOpenFiles(); setShowQuickMenu(false) }}>
                     <Icon name="folder" size={16} />
                     <span>文件列表</span>
                   </button>
@@ -748,7 +733,7 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
             document.body
           )}
         </div>
-        <button style={s.iconBtn} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }}>
+        <button className={iconBtnClass} onPointerDown={(e) => { e.preventDefault(); setCollapsed(v => { const n = !v; localStorage.setItem(COLLAPSED_KEY, String(n)); return n }) }}>
           <Icon name={collapsed ? 'chevronUp' : 'chevronDown'} size={18} />
         </button>
       </div>
@@ -756,16 +741,16 @@ export default function Toolbar({ token, sendToWs, scrollToBottom, termRef: _ter
       {renderKeys(config.pinned)}
 
       {!collapsed && (
-        <div style={s.expandedRows}>
+        <div className="pb-1">
           {chunk(config.expanded, 8).map((row, i) => (
-            <div key={i} style={s.row}>
+            <div key={i} className="flex flex-wrap gap-1 px-1.5 py-0.5">
               {row.map(id => {
                 const key = KEY_MAP[id]
                 if (!key) return null
                 return (
                   <button
                     key={id}
-                    style={s.key}
+                    className={keyClass}
                     onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); handleKey(key) }}
                   >
                     {key.label}
@@ -787,354 +772,16 @@ function chunk<T>(arr: T[], n: number): T[][] {
   return out
 }
 
-const s: Record<string, React.CSSProperties> = {
-  container: {
-    background: 'var(--nexus-bg)',
-    borderTop: '1px solid var(--nexus-border)',
-    userSelect: 'none',
-    flexShrink: 0,
-  },
-  containerPC: {
-    background: 'var(--nexus-bg)',
-    borderTop: '1px solid var(--nexus-border)',
-    userSelect: 'none',
-    flexShrink: 0,
-    width: '100%',
-  },
-  topBar: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '3px 6px',
-    gap: 4,
-  },
-  quickMenuItem: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-text)',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: '10px 14px',
-    width: '100%',
-    textAlign: 'left' as const,
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'transparent',
-  },
-  topBarPC: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '4px 12px',
-    gap: 6,
-    height: 44,
-    boxSizing: 'border-box',
-  },
-  iconBtn: {
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-text2)',
-    cursor: 'pointer',
-    fontSize: 14,
-    padding: '4px 8px',
-    borderRadius: 4,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  row: {
-    display: 'flex',
-    gap: 4,
-    padding: '2px 6px',
-    flexWrap: 'wrap',
-  },
-  rowPC: {
-    display: 'flex',
-    gap: 6,
-    padding: '4px 12px',
-    flexWrap: 'wrap',
-  },
-  expandedRows: { paddingBottom: 4 },
-  expandedRowsPC: { paddingBottom: 8 },
-  key: {
-    background: 'var(--nexus-bg2)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 6,
-    color: 'var(--nexus-text)',
-    cursor: 'pointer',
-    fontSize: 12,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    minWidth: 38,
-    padding: '6px 7px',
-    textAlign: 'center',
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'transparent',
-    flexShrink: 0,
-  },
-  keyPC: {
-    background: 'var(--nexus-bg2)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 6,
-    color: 'var(--nexus-text)',
-    cursor: 'pointer',
-    fontSize: 14,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    minWidth: 48,
-    padding: '8px 10px',
-    textAlign: 'center',
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'transparent',
-    flexShrink: 0,
-  },
-  keyEmbedded: {
-    background: 'var(--nexus-bg2)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 4,
-    color: 'var(--nexus-text)',
-    cursor: 'pointer',
-    fontSize: 11,
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    minWidth: 30,
-    padding: '4px 5px',
-    textAlign: 'center' as const,
-    touchAction: 'manipulation',
-    WebkitTapHighlightColor: 'transparent',
-    flexShrink: 0,
-  },
-  // ---- 编辑面板 ----
-  editPanel: {
-    background: 'var(--nexus-bg)',
-    borderTop: '1px solid var(--nexus-border)',
-    flexShrink: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    maxHeight: '55vh',
-  },
-  // PC 端编辑面板样式
-  desktopOverlay: {
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: 'rgba(0,0,0,0.7)',
-    zIndex: 100,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px',
-  },
-  desktopEditPanel: {
-    background: 'var(--nexus-bg)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 12,
-    flexShrink: 0,
-    display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
-    maxWidth: 600,
-    maxHeight: '70vh',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-    overflow: 'hidden',
-  },
-  editHeader: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '8px 10px',
-    borderBottom: '1px solid var(--nexus-border)',
-    flexShrink: 0,
-  },
-  editHeaderPC: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: '16px 20px',
-    borderBottom: '1px solid var(--nexus-border)',
-    flexShrink: 0,
-  },
-  editTitle: { color: 'var(--nexus-text)', fontSize: 14, fontWeight: 600 },
-  editTitlePC: { color: 'var(--nexus-text)', fontSize: 16, fontWeight: 600 },
-  editHint: { color: 'var(--nexus-muted)', fontSize: 10, marginTop: 2 },
-  editHintPC: { color: 'var(--nexus-muted)', fontSize: 12, marginTop: 4 },
-  editScroll: { overflowY: 'auto', flex: 1 },
-  editScrollPC: { overflowY: 'auto', flex: 1, padding: '8px 0' },
-  editSection: { marginBottom: 4 },
-  editSectionTitle: {
-    color: 'var(--nexus-text2)',
-    fontSize: 11,
-    padding: '6px 10px 3px',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
-  },
-  editSectionTitlePC: {
-    color: 'var(--nexus-text2)',
-    fontSize: 12,
-    padding: '10px 20px 6px',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase' as const,
-  },
-  editRow: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '0 10px',
-    height: ITEM_HEIGHT,
-    gap: 8,
-    borderBottom: '1px solid var(--nexus-border)',
-    boxSizing: 'border-box',
-  },
-  editRowPC: {
-    display: 'flex',
-    alignItems: 'center',
-    padding: '0 20px',
-    height: ITEM_HEIGHT,
-    gap: 12,
-    borderBottom: '1px solid var(--nexus-border)',
-    boxSizing: 'border-box',
-  },
-  editRowTarget: {
-    background: 'color-mix(in srgb, var(--nexus-accent) 12%, transparent)',
-    borderColor: 'var(--nexus-accent)',
-  },
-  editRowSource: {
-    opacity: 0.35,
-  },
-  dragHandle: {
-    color: 'var(--nexus-text2)',
-    fontSize: 16,
-    cursor: 'grab',
-    padding: '8px 4px',
-    flexShrink: 0,
-    touchAction: 'none',
-    display: 'flex',
-    alignItems: 'center',
-  },
-  editLabel: {
-    color: 'var(--nexus-text)',
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    fontSize: 13,
-    minWidth: 48,
-    flexShrink: 0,
-  },
-  editLabelPC: {
-    color: 'var(--nexus-text)',
-    fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace',
-    fontSize: 14,
-    minWidth: 60,
-    flexShrink: 0,
-  },
-  editDesc: {
-    color: 'var(--nexus-text2)',
-    fontSize: 11,
-    flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  editDescPC: {
-    color: 'var(--nexus-text2)',
-    fontSize: 12,
-    flex: 1,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-  },
-  removeBtn: {
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-error)',
-    cursor: 'pointer',
-    fontSize: 18,
-    padding: '0 2px',
-    flexShrink: 0,
-    lineHeight: 1,
-  },
-  removeBtnPC: {
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-error)',
-    cursor: 'pointer',
-    fontSize: 20,
-    padding: '4px 8px',
-    flexShrink: 0,
-    lineHeight: 1,
-  },
-  addBtn: {
-    background: 'var(--nexus-bg2)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 4,
-    color: 'var(--nexus-accent)',
-    cursor: 'pointer',
-    fontSize: 11,
-    padding: '4px 8px',
-  },
-  addBtnPC: {
-    background: 'var(--nexus-bg2)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 4,
-    color: 'var(--nexus-accent)',
-    cursor: 'pointer',
-    fontSize: 12,
-    padding: '6px 12px',
-  },
-  editBtnSm: {
-    background: 'transparent',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 4,
-    color: 'var(--nexus-text2)',
-    cursor: 'pointer',
-    fontSize: 12,
-    padding: '4px 10px',
-  },
-  editBtnSmPC: {
-    background: 'transparent',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 4,
-    color: 'var(--nexus-text2)',
-    cursor: 'pointer',
-    fontSize: 13,
-    padding: '6px 14px',
-  },
-  editBtnPrimary: {
-    background: 'var(--nexus-accent)',
-    border: 'none',
-    borderRadius: 4,
-    color: '#fff',
-    cursor: 'pointer',
-    fontSize: 12,
-    fontWeight: 600,
-    padding: '4px 12px',
-  },
-  editBtnPrimaryPC: {
-    background: 'var(--nexus-accent)',
-    border: 'none',
-    borderRadius: 4,
-    color: '#fff',
-    cursor: 'pointer',
-    fontSize: 13,
-    fontWeight: 600,
-    padding: '6px 16px',
-  },
-  // PC 紧凑控制按钮
-  iconBtnPC: {
-    background: 'transparent',
-    border: 'none',
-    color: 'var(--nexus-text2)',
-    cursor: 'pointer',
-    fontSize: 13,
-    padding: '3px 6px',
-    borderRadius: 4,
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pinnedRowPC: {
-    display: 'flex',
-    gap: 6,
-    flexWrap: 'wrap',
-    flex: 1,
-    marginLeft: 8,
-    alignItems: 'center',
-  },
-}
+// Tailwind class constants for reuse
+const keyClass = 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text cursor-pointer text-xs font-mono min-w-[38px] py-1.5 px-[7px] text-center touch-manipulation flex-shrink-0 transition-all duration-100 active:scale-95 active:bg-nexus-bg active:border-nexus-accent'
+const keyPCClass = 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text cursor-pointer text-sm font-mono min-w-[48px] py-2 px-2.5 text-center touch-manipulation flex-shrink-0 transition-all duration-100 active:scale-95 active:bg-nexus-bg active:border-nexus-accent'
+const keyEmbeddedClass = 'bg-nexus-bg-2 border border-nexus-border rounded text-nexus-text cursor-pointer text-[11px] font-mono min-w-[30px] py-1 px-[5px] text-center touch-manipulation flex-shrink-0 transition-all duration-100 active:scale-95 active:bg-nexus-bg active:border-nexus-accent'
+const iconBtnClass = 'bg-transparent border-none text-nexus-text-2 cursor-pointer text-sm py-1 px-2 rounded flex items-center justify-center transition-all duration-100 active:scale-90 active:text-nexus-text active:bg-nexus-bg-2'
+const iconBtnPCClass = 'bg-transparent border-none text-nexus-text-2 cursor-pointer text-[13px] py-[3px] px-1.5 rounded flex-shrink-0 flex items-center justify-center transition-all duration-100 active:scale-90 active:text-nexus-text active:bg-nexus-bg-2'
+const quickMenuItemClass = 'flex items-center gap-2.5 bg-transparent border-none text-nexus-text cursor-pointer text-sm py-2.5 px-3.5 w-full text-left touch-manipulation transition-all duration-100 active:bg-nexus-bg-2 active:pl-4'
+const editBtnSmClass = 'bg-transparent border border-nexus-border rounded text-nexus-text-2 cursor-pointer text-xs py-1 px-2.5 transition-all duration-100 active:scale-95 active:bg-nexus-bg-2'
+const editBtnSmPCClass = 'bg-transparent border border-nexus-border rounded text-nexus-text-2 cursor-pointer text-[13px] py-1.5 px-3.5 transition-all duration-100 active:scale-95 active:bg-nexus-bg-2'
+const editBtnPrimaryClass = 'bg-nexus-accent border-none rounded text-white cursor-pointer text-xs font-semibold py-1 px-3 transition-all duration-100 active:scale-95 active:bg-blue-600'
+const editBtnPrimaryPCClass = 'bg-nexus-accent border-none rounded text-white cursor-pointer text-[13px] font-semibold py-1.5 px-4 transition-all duration-100 active:scale-95 active:bg-blue-600'
+const addBtnClass = 'bg-nexus-bg-2 border border-nexus-border rounded text-nexus-accent cursor-pointer text-[11px] py-1 px-2 transition-all duration-100 active:scale-95 active:bg-nexus-bg'
+const addBtnPCClass = 'bg-nexus-bg-2 border border-nexus-border rounded text-nexus-accent cursor-pointer text-xs py-1.5 px-3 transition-all duration-100 active:scale-95 active:bg-nexus-bg'

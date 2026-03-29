@@ -124,29 +124,29 @@ export default function WorkspaceSelector({ token, onClose, onConfirm }: Props) 
   }
 
   return (
-    <div style={isDesktop ? s.desktopOverlay : s.overlay}>
+    <div className={isDesktop ? 'fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-5' : 'fixed inset-0 bg-black/60 z-[100]'}>
       <GhostShield />
-      <div style={isDesktop ? s.desktopPanel : s.panel}>
+      <div className={isDesktop ? 'bg-nexus-bg border border-nexus-border rounded-xl flex flex-col text-nexus-text w-full max-w-[600px] max-h-[85vh] shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden' : 'fixed inset-0 bg-nexus-bg flex flex-col text-nexus-text'}>
         {/* 顶部：标题 + 关闭 */}
-        <div style={s.header}>
-          <span style={s.title}>选择工作目录</span>
-          <button style={{...s.closeBtn, display: 'flex', alignItems: 'center', justifyContent: 'center'}} onPointerDown={onClose}><Icon name="x" size={20} /></button>
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-nexus-border shrink-0">
+          <span className="text-base font-semibold">选择工作目录</span>
+          <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer text-2xl leading-none px-1 flex items-center justify-center" onPointerDown={onClose}><Icon name="x" size={20} /></button>
         </div>
 
         {/* 内容区域 */}
-        <div style={s.scrollArea}>
+        <div className="flex-1 overflow-y-auto py-2">
           {/* 当前选择 */}
-          <div style={s.section}>
-            <div style={s.sectionTitle}>当前选择</div>
-            <div style={s.selectedPath}>{selectedPath || '~'}</div>
+          <div className="px-4 py-3 border-b border-nexus-border">
+            <div className="text-[11px] text-nexus-text-2 tracking-wider uppercase mb-0">当前选择</div>
+            <div className="text-sm text-nexus-accent font-mono px-3 py-2 bg-nexus-bg-2 rounded-md break-all mt-2">{selectedPath || '~'}</div>
           </div>
 
           {/* 手动输入 */}
-          <div style={s.section}>
-            <div style={s.sectionTitle}>输入路径</div>
-            <div style={isDesktop ? s.desktopFormRow : s.formRow}>
+          <div className="px-4 py-3 border-b border-nexus-border">
+            <div className="text-[11px] text-nexus-text-2 tracking-wider uppercase mb-0">输入路径</div>
+            <div className={isDesktop ? 'flex flex-row items-center gap-4 mt-2' : 'flex flex-col gap-1 mt-2'}>
               <input
-                style={isDesktop ? s.desktopInput : s.input}
+                className={isDesktop ? 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-3 py-2.5 outline-none flex-1 box-border' : 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-2.5 py-2 outline-none w-full box-border'}
                 value={inputPath}
                 onChange={e => handleInputChange(e.target.value)}
                 onKeyDown={handleKeyDown}
@@ -156,14 +156,14 @@ export default function WorkspaceSelector({ token, onClose, onConfirm }: Props) 
                 spellCheck={false}
               />
             </div>
-            <div style={s.hint}>支持 ~ 表示 home 目录，或直接输入绝对路径</div>
+            <div className="text-nexus-muted text-[11px] mt-1.5">支持 ~ 表示 home 目录，或直接输入绝对路径</div>
           </div>
 
           {/* Shell 类型选择 */}
-          <div style={s.section}>
-            <div style={s.sectionTitle}>Shell 类型</div>
-            <div style={s.radioGroup}>
-              <label style={s.radioLabel}>
+          <div className="px-4 py-3 border-b border-nexus-border">
+            <div className="text-[11px] text-nexus-text-2 tracking-wider uppercase mb-0">Shell 类型</div>
+            <div className="flex flex-col gap-2.5 mt-2">
+              <label className="flex items-center gap-2 text-nexus-text text-sm cursor-pointer">
                 <input
                   type="radio"
                   name="shellType"
@@ -173,7 +173,7 @@ export default function WorkspaceSelector({ token, onClose, onConfirm }: Props) 
                 />
                 <span>Claude (默认)</span>
               </label>
-              <label style={s.radioLabel}>
+              <label className="flex items-center gap-2 text-nexus-text text-sm cursor-pointer">
                 <input
                   type="radio"
                   name="shellType"
@@ -188,10 +188,10 @@ export default function WorkspaceSelector({ token, onClose, onConfirm }: Props) 
 
           {/* Profile 选择 (仅 claude 模式) */}
           {shellType === 'claude' && (
-            <div style={s.section}>
-              <div style={s.sectionTitle}>配置 Profile (可选)</div>
+            <div className="px-4 py-3 border-b border-nexus-border">
+              <div className="text-[11px] text-nexus-text-2 tracking-wider uppercase mb-0">配置 Profile (可选)</div>
               <select
-                style={s.select}
+                className="bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-2.5 py-2 w-full outline-none mt-2"
                 value={selectedProfile}
                 onChange={(e) => handleProfileChange(e.target.value)}
               >
@@ -202,60 +202,57 @@ export default function WorkspaceSelector({ token, onClose, onConfirm }: Props) 
                   </option>
                 ))}
               </select>
-              <div style={s.hint}>选择 profile 会使用该配置的 API key 和模型设置，数据隔离在项目目录</div>
+              <div className="text-nexus-muted text-[11px] mt-1.5">选择 profile 会使用该配置的 API key 和模型设置，数据隔离在项目目录</div>
             </div>
           )}
 
           {/* 目录浏览器 */}
-          <div style={s.section}>
-            <div style={s.sectionHeader}>
-              <div style={s.browsePathRow}>
-                <span style={s.sectionTitle}>浏览目录</span>
-                <span style={s.browseCurrent} title={browsePath || ''}>{formatBrowsePath(browsePath)}</span>
+          <div className="px-4 py-3 border-b border-nexus-border">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-nexus-text-2 tracking-wider uppercase mb-0">浏览目录</span>
+                <span className="text-[11px] text-nexus-accent font-mono max-w-[160px] overflow-hidden text-ellipsis whitespace-nowrap" title={browsePath || ''}>{formatBrowsePath(browsePath)}</span>
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
+              <div className="flex gap-1.5">
                 {browsePath && (
                   <button
-                    style={s.refreshBtn}
+                    className="bg-transparent border border-nexus-border rounded text-nexus-text-2 cursor-pointer text-[11px] px-2 py-0.5 shrink-0"
                     onPointerDown={() => handleSelect(browsePath)}
                     title="选择当前目录"
                   >选此目录</button>
                 )}
-                <button style={s.refreshBtn} onPointerDown={() => browseDir(null)}>根目录</button>
+                <button className="bg-transparent border border-nexus-border rounded text-nexus-text-2 cursor-pointer text-[11px] px-2 py-0.5 shrink-0" onPointerDown={() => browseDir(null)}>根目录</button>
               </div>
             </div>
-            {browseError && <div style={s.errorMsg}>{browseError}</div>}
-            {browseLoading && <div style={s.emptyMsg}>加载中...</div>}
+            {browseError && <div className="text-nexus-error text-xs mb-2">{browseError}</div>}
+            {browseLoading && <div className="text-nexus-muted text-sm py-2">加载中...</div>}
             {!browseLoading && (
-              <div style={s.workspaceList}>
+              <div className="flex flex-col gap-0.5">
                 {/* 向上一级 */}
                 {browseParent && (
                   <div
-                    style={s.browseUpItem}
+                    className="flex items-center gap-2.5 px-3 py-1.5 rounded-md cursor-pointer bg-transparent border-b border-nexus-border mb-1"
                     onPointerDown={() => browseDir(browseParent)}
                   >
-                    <span style={s.workspaceIcon}>↑</span>
-                    <span style={{ ...s.workspaceName, color: 'var(--nexus-text2)' }}>..</span>
-                    <span style={s.browseHint}>{browseParent.split('/').slice(-1)[0] || '/'}</span>
+                    <span className="text-sm shrink-0">↑</span>
+                    <span className="text-nexus-text-2 text-sm flex-1 overflow-hidden text-ellipsis whitespace-nowrap">..</span>
+                    <span className="text-[11px] text-nexus-muted font-mono">{browseParent.split('/').slice(-1)[0] || '/'}</span>
                   </div>
                 )}
                 {/* 子目录列表 */}
                 {browseDirs.length === 0 && !browseLoading && (
-                  <div style={s.emptyMsg}>无子目录</div>
+                  <div className="text-nexus-muted text-sm py-2">无子目录</div>
                 )}
                 {browseDirs.map(dir => (
                   <div
                     key={dir.path}
-                    style={{
-                      ...s.browseItem,
-                      ...(selectedPath === dir.path ? s.workspaceItemSelected : {}),
-                    }}
+                    className={`flex items-center gap-2.5 px-3 py-1.5 rounded-md cursor-pointer bg-transparent ${selectedPath === dir.path ? 'bg-nexus-bg-2 border border-nexus-accent' : ''}`}
                     onPointerDown={() => handleSelect(dir.path)}
                     onDoubleClick={() => browseDir(dir.path)}
                     title="单击选中，双击进入"
                   >
-                    <span style={s.workspaceIcon}>📁</span>
-                    <span style={s.workspaceName}>{dir.name}</span>
+                    <span className="text-sm shrink-0">📁</span>
+                    <span className="text-nexus-text text-sm flex-1 overflow-hidden text-ellipsis whitespace-nowrap">{dir.name}</span>
                   </div>
                 ))}
               </div>
@@ -265,65 +262,11 @@ export default function WorkspaceSelector({ token, onClose, onConfirm }: Props) 
         </div>
 
         {/* 底部按钮 */}
-        <div style={s.footer}>
-          <button style={s.cancelBtn} onPointerDown={onClose}>取消</button>
-          <button style={s.confirmBtn} onPointerDown={handleConfirm}>创建</button>
+        <div className="flex gap-3 px-4 py-3 border-t border-nexus-border shrink-0 justify-end">
+          <button className="bg-transparent border border-nexus-border rounded-md text-nexus-text-2 cursor-pointer text-sm px-4 py-2" onPointerDown={onClose}>取消</button>
+          <button className="bg-nexus-accent border-none rounded-md text-white cursor-pointer text-sm font-semibold px-4 py-2" onPointerDown={handleConfirm}>创建</button>
         </div>
       </div>
     </div>
   )
-}
-
-const s: Record<string, React.CSSProperties> = {
-  // 移动端样式（默认）
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100 },
-  panel: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--nexus-bg)', display: 'flex', flexDirection: 'column', color: 'var(--nexus-text)' },
-
-  // PC 端样式
-  desktopOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
-  desktopPanel: { background: 'var(--nexus-bg)', border: '1px solid var(--nexus-border)', borderRadius: 12, display: 'flex', flexDirection: 'column', color: 'var(--nexus-text)', width: '100%', maxWidth: 600, maxHeight: '85vh', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', overflow: 'hidden' },
-
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--nexus-border)', flexShrink: 0 },
-  title: { fontSize: 16, fontWeight: 600 },
-  closeBtn: { background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', fontSize: 24, lineHeight: 1, padding: '0 4px' },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: '8px 0' },
-  section: { padding: '12px 16px', borderBottom: '1px solid var(--nexus-border)' },
-  sectionHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  sectionTitle: { fontSize: 11, color: 'var(--nexus-text2)', letterSpacing: 0.5, textTransform: 'uppercase' as const, marginBottom: 0 },
-  selectedPath: { fontSize: 14, color: 'var(--nexus-accent)', fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace', padding: '8px 12px', background: 'var(--nexus-bg2)', borderRadius: 6, wordBreak: 'break-all' as const },
-  refreshBtn: { background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 4, color: 'var(--nexus-text2)', cursor: 'pointer', fontSize: 11, padding: '2px 8px', flexShrink: 0 },
-  errorMsg: { color: 'var(--nexus-error)', fontSize: 12, marginBottom: 8 },
-  emptyMsg: { color: 'var(--nexus-muted)', fontSize: 13, padding: '8px 0' },
-  hint: { color: 'var(--nexus-muted)', fontSize: 11, marginTop: 6 },
-  radioGroup: { display: 'flex', flexDirection: 'column' as const, gap: 10 },
-  radioLabel: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--nexus-text)', fontSize: 14, cursor: 'pointer' },
-  select: { background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 14, padding: '8px 10px', width: '100%', outline: 'none' },
-
-  // 移动端表单样式
-  formRow: { display: 'flex', flexDirection: 'column' as const, gap: 4 },
-  input: { background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 14, padding: '8px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' as const },
-
-  // PC 端表单样式
-  desktopFormRow: { display: 'flex', flexDirection: 'row' as const, alignItems: 'center', gap: 16 },
-  desktopInput: { background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 14, padding: '10px 12px', outline: 'none', flex: 1, boxSizing: 'border-box' as const },
-
-  // 浏览器路径行
-  browsePathRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  browseCurrent: { fontSize: 11, color: 'var(--nexus-accent)', fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
-
-  // 工作区列表
-  workspaceList: { display: 'flex', flexDirection: 'column' as const, gap: 2 },
-  workspaceItemSelected: { background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-accent)' },
-  workspaceIcon: { fontSize: 14, flexShrink: 0 },
-  workspaceName: { fontSize: 14, color: 'var(--nexus-text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const },
-
-  // 浏览器条目
-  browseItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 6, cursor: 'pointer', background: 'transparent' },
-  browseUpItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 12px', borderRadius: 6, cursor: 'pointer', background: 'transparent', borderBottom: '1px solid var(--nexus-border)', marginBottom: 4 },
-  browseHint: { fontSize: 11, color: 'var(--nexus-muted)', fontFamily: 'monospace' },
-
-  // 底部按钮
-  footer: { display: 'flex', gap: 12, padding: '12px 16px', borderTop: '1px solid var(--nexus-border)', flexShrink: 0, justifyContent: 'flex-end' },
-  cancelBtn: { background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text2)', cursor: 'pointer', fontSize: 14, padding: '8px 16px' },
-  confirmBtn: { background: 'var(--nexus-accent)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, padding: '8px 16px' },
 }

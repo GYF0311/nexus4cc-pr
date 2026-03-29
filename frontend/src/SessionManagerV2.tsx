@@ -2,17 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import GhostShield from './GhostShield'
 import { Icon } from './icons'
 
-// 检测是否为 PC 端（>= 768px）
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768)
-  useEffect(() => {
-    const onResize = () => setIsDesktop(window.innerWidth >= 768)
-    window.addEventListener('resize', onResize)
-    return () => window.removeEventListener('resize', onResize)
-  }, [])
-  return isDesktop
-}
-
 interface Channel {
   index: number
   name: string
@@ -36,6 +25,17 @@ interface Props {
   onSwitchChannel: (channelIndex: number) => void
   onNewProject: () => void // 打开 WorkspaceSelector
   onNewChannel: () => void // 直接新建窗口
+}
+
+// 检测是否为 PC 端（>= 768px）
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768)
+  useEffect(() => {
+    const onResize = () => setIsDesktop(window.innerWidth >= 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return isDesktop
 }
 
 // 状态点颜色映射
@@ -366,43 +366,43 @@ export default function SessionManagerV2({
   }
 
   return (
-    <div style={isDesktop ? s.desktopOverlay : s.overlay}>
+    <div className={isDesktop ? 'fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-5' : 'fixed inset-0 bg-black/60 z-[100]'}>
       <GhostShield />
-      <div style={isDesktop ? s.desktopPanel : s.panel}>
+      <div className={isDesktop ? 'bg-nexus-bg border border-nexus-border rounded-xl flex flex-col text-nexus-text w-full max-w-[420px] max-h-[85vh] shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden' : 'fixed inset-0 bg-nexus-bg flex flex-col text-nexus-text'}>
         {/* 顶部标题栏 */}
-        <div style={s.header}>
-          <span style={s.title}>会话管理</span>
-          <div style={s.headerActions}>
-            <button style={s.refreshBtn} onPointerDown={handleRefresh} title="刷新">
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-nexus-border shrink-0">
+          <span className="text-base font-semibold">会话管理</span>
+          <div className="flex items-center gap-2">
+            <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center" onPointerDown={handleRefresh} title="刷新">
               <Icon name="refresh" size={16} />
             </button>
-            <button style={s.closeBtn} onPointerDown={onClose}>
+            <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer text-2xl leading-none px-1 flex items-center justify-center" onPointerDown={onClose}>
               <Icon name="x" size={20} />
             </button>
           </div>
         </div>
 
         {error && (
-          <div style={s.errorBanner}>
+          <div className="bg-red-500/15 text-nexus-error px-4 py-2.5 text-sm flex items-center justify-between border-b border-nexus-border">
             {error}
-            <button style={s.errorClose} onPointerDown={() => setError(null)}>
+            <button className="bg-transparent border-none text-nexus-error cursor-pointer p-0.5" onPointerDown={() => setError(null)}>
               <Icon name="x" size={14} />
             </button>
           </div>
         )}
 
-        <div style={s.scrollArea}>
+        <div className="flex-1 overflow-y-auto flex flex-col">
           {/* ========== Channel 列表区域（上部）========== */}
-          <div style={s.channelsSection}>
+          <div className="py-3 flex-1 flex flex-col min-h-[120px]">
             {/* Channel 标题栏 */}
-            <div style={s.sectionHeader}>
+            <div className="px-4 pb-2 border-b border-nexus-border mb-2">
               <div>
-                <div style={s.sectionTitle}>
-                  <span style={s.sectionIcon}>📂</span>
+                <div className="text-xs font-semibold text-nexus-text tracking-wide flex items-center gap-1.5">
+                  <span className="text-sm">📂</span>
                   {currentProjectInfo?.name || currentProject || '未选择项目'}
                 </div>
                 {currentProjectInfo?.path && (
-                  <div style={s.projectPath} title={currentProjectInfo.path}>
+                  <div className="text-[11px] text-nexus-text-2 mt-0.5 font-mono overflow-hidden text-ellipsis whitespace-nowrap" title={currentProjectInfo.path}>
                     {formatPath(currentProjectInfo.path)}
                   </div>
                 )}
@@ -410,13 +410,13 @@ export default function SessionManagerV2({
             </div>
 
             {/* Channel 列表 */}
-            <div style={s.listContainer}>
+            <div className="flex-1 overflow-y-auto px-2 py-1">
               {loadingChannels ? (
-                <div style={s.emptyMsg}>加载中...</div>
+                <div className="text-nexus-muted text-sm px-4 py-3">加载中...</div>
               ) : channels.length === 0 ? (
-                <div style={s.emptyState}>
-                  <div style={s.emptyIcon}>#</div>
-                  <div style={s.emptyText}>该 Project 没有 Channel</div>
+                <div className="flex flex-col items-center justify-center px-4 py-6 text-nexus-muted">
+                  <div className="text-[32px] mb-2 opacity-50">#</div>
+                  <div className="text-sm">该 Project 没有 Channel</div>
                 </div>
               ) : (
                 channels.map(channel => {
@@ -425,11 +425,8 @@ export default function SessionManagerV2({
                   return (
                     <div
                       key={channel.index}
-                      style={{
-                        ...s.channelItem,
-                        ...(isActive ? s.channelItemActive : {}),
-                        ...(pressedChannel === channel.index ? s.channelItemPressed : {}),
-                      }}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer mb-0.5 select-none touch-manipulation transition-colors duration-75 ${isActive ? 'bg-nexus-bg-2' : ''} ${pressedChannel === channel.index ? 'bg-nexus-border transition-none' : ''}`}
+                      style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'rgba(128,128,128,0.3)' }}
                       onTouchStart={(e) => {
                         handleChannelTouchStart(channel, e)
                       }}
@@ -440,17 +437,15 @@ export default function SessionManagerV2({
                       onTouchMove={() => handleChannelTouchMove()}
                     >
                       <span
-                        style={{
-                          ...s.statusDot,
-                          background: STATUS_DOT[status],
-                        }}
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ background: STATUS_DOT[status] }}
                         title={status}
                       />
-                      <span style={s.channelPrefix}>#</span>
-                      <span style={s.channelName}>{channel.name}</span>
+                      <span className="text-nexus-text-2 text-[13px] font-medium select-none">#</span>
+                      <span className="flex-1 text-sm text-nexus-text overflow-hidden text-ellipsis whitespace-nowrap">{channel.name}</span>
                       {/* 三个点菜单按钮 */}
                       <button
-                        style={s.channelMenuBtn}
+                        className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center opacity-60 transition-opacity duration-150"
                         onTouchStart={(e) => {
                           // 阻止触摸事件冒泡，防止触发父元素的 channel 切换
                           e.stopPropagation()
@@ -518,7 +513,7 @@ export default function SessionManagerV2({
             </div>
 
             {/* 新建 Channel 按钮 */}
-            <button style={s.addBtn} onPointerDown={onNewChannel}>
+            <button className="flex items-center justify-center gap-1.5 mx-4 my-2 px-3 py-2 bg-transparent border border-dashed border-nexus-border rounded-md text-nexus-text-2 text-sm cursor-pointer" onPointerDown={onNewChannel}>
               <Icon name="plus" size={14} />
               <span>新 Channel</span>
             </button>
@@ -527,29 +522,30 @@ export default function SessionManagerV2({
             {(longPressMenu || channelMenu) && (
               <>
                 <div
-                  style={s.menuOverlay}
+                  className="fixed inset-0 z-[150]"
                   onPointerDown={() => {
                     setLongPressMenu(null)
                     setChannelMenu(null)
                   }}
                 />
                 <div
+                  className="fixed bg-nexus-bg border border-nexus-border rounded-lg py-1 min-w-[120px] shadow-[0_4px_20px_rgba(0,0,0,0.3)] z-[151]"
                   style={{
-                    ...s.longPressMenu,
                     left: (longPressMenu || channelMenu)!.x,
                     top: (longPressMenu || channelMenu)!.y,
+                    transform: 'translateX(-50%)',
                   }}
                 >
                   <button
-                    style={s.menuItem}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-transparent border-none text-nexus-text text-sm cursor-pointer w-full text-left"
                     onPointerDown={() => handleRenameChannel((longPressMenu || channelMenu)!.channel)}
                   >
                     <Icon name="pencil" size={14} />
                     <span>重命名</span>
                   </button>
-                  <div style={s.menuDivider} />
+                  <div className="h-px bg-nexus-border my-1" />
                   <button
-                    style={{ ...s.menuItem, ...s.menuItemDanger }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-transparent border-none text-nexus-error text-sm cursor-pointer w-full text-left"
                     onPointerDown={() => handleCloseChannel((longPressMenu || channelMenu)!.channel)}
                   >
                     <Icon name="x" size={14} />
@@ -561,25 +557,25 @@ export default function SessionManagerV2({
           </div>
 
           {/* 分隔线 */}
-          <div style={s.divider} />
+          <div className="h-0.5 bg-nexus-border my-2" />
 
           {/* ========== Project 列表区域（下部）========== */}
-          <div style={s.projectsSection}>
-            <div style={s.sectionHeader}>
-              <div style={s.sectionTitle}>
-                <span style={s.sectionIcon}>📁</span>
+          <div className="py-3 flex-1 flex flex-col bg-nexus-bg-2 min-h-[120px]">
+            <div className="px-4 pb-2 border-b border-nexus-border mb-2">
+              <div className="text-xs font-semibold text-nexus-text tracking-wide flex items-center gap-1.5">
+                <span className="text-sm">📁</span>
                 Projects
               </div>
             </div>
 
             {/* Project 列表 */}
-            <div style={s.listContainer}>
+            <div className="flex-1 overflow-y-auto px-2 py-1">
               {loadingProjects ? (
-                <div style={s.emptyMsg}>加载中...</div>
+                <div className="text-nexus-muted text-sm px-4 py-3">加载中...</div>
               ) : projects.length === 0 ? (
-                <div style={s.emptyState}>
-                  <div style={s.emptyIcon}>📁</div>
-                  <div style={s.emptyText}>暂无 Projects</div>
+                <div className="flex flex-col items-center justify-center px-4 py-6 text-nexus-muted">
+                  <div className="text-[32px] mb-2 opacity-50">📁</div>
+                  <div className="text-sm">暂无 Projects</div>
                 </div>
               ) : (
                 projects.map(project => {
@@ -587,22 +583,20 @@ export default function SessionManagerV2({
                   return (
                     <div
                       key={project.name}
-                      style={{
-                        ...s.projectItem,
-                        ...(isActive ? s.projectItemActive : {}),
-                      }}
+                      className={`flex items-center gap-2.5 px-3 py-2.5 rounded-md cursor-pointer mb-0.5 select-none touch-manipulation ${isActive ? 'bg-blue-500/15' : ''}`}
+                      style={{ WebkitTouchCallout: 'none', WebkitTapHighlightColor: 'rgba(128,128,128,0.3)' }}
                       onPointerDown={() => {
                         if (project.name !== currentProject) {
                           handleProjectClick(project)
                         }
                       }}
                     >
-                      <span style={isActive ? s.projectDotActive : s.projectDot} />
-                      <span style={s.projectName}>{project.name}</span>
-                      <span style={s.channelCount}>({project.channelCount})</span>
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${isActive ? 'bg-blue-500' : 'bg-nexus-muted'}`} />
+                      <span className="flex-1 text-sm text-nexus-text overflow-hidden text-ellipsis whitespace-nowrap">{project.name}</span>
+                      <span className="text-xs text-nexus-text-2 font-mono">({project.channelCount})</span>
                       {/* 三个点菜单按钮 */}
                       <button
-                        style={s.projectMenuBtn}
+                        className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center opacity-60 transition-opacity duration-150"
                         onTouchStart={(e) => {
                           e.stopPropagation()
                         }}
@@ -668,7 +662,7 @@ export default function SessionManagerV2({
             </div>
 
             {/* 新建 Project 按钮 */}
-            <button style={s.addBtn} onPointerDown={onNewProject}>
+            <button className="flex items-center justify-center gap-1.5 mx-4 my-2 px-3 py-2 bg-transparent border border-dashed border-nexus-border rounded-md text-nexus-text-2 text-sm cursor-pointer" onPointerDown={onNewProject}>
               <Icon name="plus" size={14} />
               <span>新 Project</span>
             </button>
@@ -677,27 +671,28 @@ export default function SessionManagerV2({
             {projectMenu && (
               <>
                 <div
-                  style={s.menuOverlay}
+                  className="fixed inset-0 z-[150]"
                   onPointerDown={() => setProjectMenu(null)}
                 />
                 <div
+                  className="fixed bg-nexus-bg border border-nexus-border rounded-lg py-1 min-w-[120px] shadow-[0_4px_20px_rgba(0,0,0,0.3)] z-[151]"
                   style={{
-                    ...s.longPressMenu,
                     left: projectMenu.x,
                     top: projectMenu.y,
+                    transform: 'translateX(-50%)',
                   }}
                 >
-                  <div style={s.menuTitle}>{projectMenu.project.name}</div>
+                  <div className="px-4 py-2 text-xs font-semibold text-nexus-text-2 border-b border-nexus-border mb-1">{projectMenu.project.name}</div>
                   <button
-                    style={s.menuItem}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-transparent border-none text-nexus-text text-sm cursor-pointer w-full text-left"
                     onPointerDown={() => handleRenameProject(projectMenu.project)}
                   >
                     <Icon name="pencil" size={14} />
                     <span>重命名</span>
                   </button>
-                  <div style={s.menuDivider} />
+                  <div className="h-px bg-nexus-border my-1" />
                   <button
-                    style={{ ...s.menuItem, ...s.menuItemDanger }}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-transparent border-none text-nexus-error text-sm cursor-pointer w-full text-left"
                     onPointerDown={() => handleCloseProject(projectMenu.project)}
                   >
                     <Icon name="x" size={14} />
@@ -711,82 +706,4 @@ export default function SessionManagerV2({
       </div>
     </div>
   )
-}
-
-const s: Record<string, React.CSSProperties> = {
-  // 移动端样式（默认）
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100 },
-  panel: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--nexus-bg)', display: 'flex', flexDirection: 'column', color: 'var(--nexus-text)' },
-
-  // PC 端样式
-  desktopOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
-  desktopPanel: { background: 'var(--nexus-bg)', border: '1px solid var(--nexus-border)', borderRadius: 12, display: 'flex', flexDirection: 'column', color: 'var(--nexus-text)', width: '100%', maxWidth: 420, maxHeight: '85vh', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', overflow: 'hidden' },
-
-  // 头部
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--nexus-border)', flexShrink: 0 },
-  title: { fontSize: 16, fontWeight: 600 },
-  headerActions: { display: 'flex', alignItems: 'center', gap: 8 },
-  refreshBtn: { background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-  closeBtn: { background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', fontSize: 24, lineHeight: 1, padding: '0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
-
-  // 错误提示
-  errorBanner: { background: 'rgba(239,68,68,0.15)', color: 'var(--nexus-error)', padding: '10px 16px', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--nexus-border)' },
-  errorClose: { background: 'transparent', border: 'none', color: 'var(--nexus-error)', cursor: 'pointer', padding: 2 },
-
-  // 滚动区域
-  scrollArea: { flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' },
-
-  // Channel 区域
-  channelsSection: { padding: '12px 0', flex: '1 1 auto', display: 'flex', flexDirection: 'column', minHeight: 120 },
-  sectionHeader: { padding: '0 16px 8px', borderBottom: '1px solid var(--nexus-border)', marginBottom: 8 },
-  sectionTitle: { fontSize: 12, fontWeight: 600, color: 'var(--nexus-text)', letterSpacing: 0.3, display: 'flex', alignItems: 'center', gap: 6 },
-  sectionIcon: { fontSize: 14 },
-  projectPath: { fontSize: 11, color: 'var(--nexus-text2)', marginTop: 2, fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-
-  // 列表容器
-  listContainer: { flex: 1, overflowY: 'auto', padding: '4px 8px' },
-
-  // Channel 项
-  channelItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation', WebkitTapHighlightColor: 'rgba(128,128,128,0.3)', transition: 'background-color 0.05s ease' },
-  channelItemActive: { background: 'var(--nexus-bg2)' },
-  channelItemPressed: { background: 'var(--nexus-border)', transition: 'none' },
-  channelPrefix: { color: 'var(--nexus-text2)', fontSize: 13, fontWeight: 500, userSelect: 'none' },
-  channelName: { flex: 1, fontSize: 14, color: 'var(--nexus-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  statusDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
-  channelMenuBtn: { background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6, transition: 'opacity 0.15s' },
-
-  // 分隔线
-  divider: { height: 2, background: 'var(--nexus-border)', margin: '8px 0' },
-
-  // Project 区域
-  projectsSection: { padding: '12px 0', flex: '1 1 auto', display: 'flex', flexDirection: 'column', background: 'var(--nexus-bg2)', minHeight: 120 },
-
-  // Project 项
-  projectItem: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 6, cursor: 'pointer', marginBottom: 2, WebkitUserSelect: 'none', userSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'manipulation', WebkitTapHighlightColor: 'rgba(128,128,128,0.3)' },
-  projectItemActive: { background: 'rgba(59,130,246,0.15)' },
-  projectItemPressed: { background: 'var(--nexus-border)', transition: 'none' },
-  projectDot: { width: 8, height: 8, borderRadius: '50%', background: 'var(--nexus-muted)', flexShrink: 0 },
-  projectDotActive: { width: 8, height: 8, borderRadius: '50%', background: '#3b82f6', flexShrink: 0 },
-  projectName: { flex: 1, fontSize: 14, color: 'var(--nexus-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  channelCount: { fontSize: 12, color: 'var(--nexus-text2)', fontFamily: 'monospace' },
-
-  // Project 菜单按钮
-  projectMenuBtn: { background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.6, transition: 'opacity 0.15s' },
-
-  // 空状态
-  emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px', color: 'var(--nexus-muted)' },
-  emptyIcon: { fontSize: 32, marginBottom: 8, opacity: 0.5 },
-  emptyText: { fontSize: 13 },
-  emptyMsg: { color: 'var(--nexus-muted)', fontSize: 13, padding: '12px 16px' },
-
-  // 新建按钮
-  addBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, margin: '8px 16px', padding: '8px 12px', background: 'transparent', border: '1px dashed var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text2)', fontSize: 13, cursor: 'pointer' },
-
-  // 长按菜单
-  menuOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 150 },
-  longPressMenu: { position: 'fixed', transform: 'translateX(-50%)', background: 'var(--nexus-bg)', border: '1px solid var(--nexus-border)', borderRadius: 8, padding: '4px 0', minWidth: 120, boxShadow: '0 4px 20px rgba(0,0,0,0.3)', zIndex: 151 },
-  menuTitle: { padding: '8px 16px', fontSize: 12, fontWeight: 600, color: 'var(--nexus-text2)', borderBottom: '1px solid var(--nexus-border)', marginBottom: 4 },
-  menuItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', background: 'transparent', border: 'none', color: 'var(--nexus-text)', fontSize: 14, cursor: 'pointer', width: '100%', textAlign: 'left' },
-  menuItemDanger: { color: 'var(--nexus-error)' },
-  menuDivider: { height: 1, background: 'var(--nexus-border)', margin: '4px 0' },
 }

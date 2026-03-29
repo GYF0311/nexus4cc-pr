@@ -105,20 +105,20 @@ export default function SessionManager({ token, onClose }: Props) {
       { key: 'API_TIMEOUT_MS',     label: 'Timeout (ms)',  placeholder: '3000000' },
     ]
     return (
-      <div style={isDesktop ? s.desktopOverlay : s.overlay}>
-        <div style={isDesktop ? s.desktopPanel : s.panel}>
-          <div style={s.header}>
-            <span style={s.title}>{editingConfig.isNew ? '新建配置' : '编辑配置'}</span>
-            <button style={{...s.closeBtn, display: 'flex', alignItems: 'center', justifyContent: 'center'}} onPointerDown={() => { setEditingConfig(null); setCfgError(null) }}><Icon name="x" size={20} /></button>
+      <div className={isDesktop ? 'fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-5' : 'fixed inset-0 bg-black/60 z-[100]'}>
+        <div className={isDesktop ? 'bg-nexus-bg border border-nexus-border rounded-xl flex flex-col text-nexus-text w-full max-w-[800px] max-h-[85vh] shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden' : 'fixed inset-0 bg-nexus-bg flex flex-col text-nexus-text'}>
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-nexus-border shrink-0">
+            <span className="text-base font-semibold">{editingConfig.isNew ? '新建配置' : '编辑配置'}</span>
+            <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer text-2xl leading-none px-1 flex items-center justify-center" onPointerDown={() => { setEditingConfig(null); setCfgError(null) }}><Icon name="x" size={20} /></button>
           </div>
-          <div style={s.scrollArea}>
-            <div style={s.section}>
-              {cfgError && <div style={s.errorMsg}>{cfgError}</div>}
+          <div className="flex-1 overflow-y-auto py-2">
+            <div className="px-4 py-3 border-b border-nexus-border">
+              {cfgError && <div className="text-nexus-error text-xs mb-2">{cfgError}</div>}
               {/* ID 字段只在新建时可编辑 */}
-              <div style={isDesktop ? s.desktopFormRow : s.formRow}>
-                <label style={isDesktop ? s.desktopLabel : s.label}>配置 ID（唯一标识）</label>
+              <div className={isDesktop ? 'flex flex-row items-center gap-4 mb-3' : 'flex flex-col gap-1 mb-2.5'}>
+                <label className={isDesktop ? 'text-nexus-text-2 text-sm w-[140px] shrink-0 text-right' : 'text-nexus-text-2 text-xs'}>配置 ID（唯一标识）</label>
                 <input
-                  style={isDesktop ? s.desktopInput : s.input}
+                  className={isDesktop ? 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-3 py-2.5 outline-none flex-1 box-border' : 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-2.5 py-2 outline-none w-full box-border'}
                   value={editingConfig.id}
                   readOnly={!editingConfig.isNew}
                   onChange={e => setEditingConfig(c => c && { ...c, id: e.target.value.replace(/[^a-z0-9_-]/gi, '-').toLowerCase() })}
@@ -127,10 +127,10 @@ export default function SessionManager({ token, onClose }: Props) {
                 />
               </div>
               {fields.map(f => (
-                <div key={f.key} style={isDesktop ? s.desktopFormRow : s.formRow}>
-                  <label style={isDesktop ? s.desktopLabel : s.label}>{f.label}</label>
+                <div key={f.key} className={isDesktop ? 'flex flex-row items-center gap-4 mb-3' : 'flex flex-col gap-1 mb-2.5'}>
+                  <label className={isDesktop ? 'text-nexus-text-2 text-sm w-[140px] shrink-0 text-right' : 'text-nexus-text-2 text-xs'}>{f.label}</label>
                   <input
-                    style={isDesktop ? s.desktopInput : s.input}
+                    className={isDesktop ? 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-3 py-2.5 outline-none flex-1 box-border' : 'bg-nexus-bg-2 border border-nexus-border rounded-md text-nexus-text text-sm px-2.5 py-2 outline-none w-full box-border'}
                     type={f.secret ? 'password' : 'text'}
                     value={(editingConfig as unknown as Record<string, string>)[f.key] ?? ''}
                     onChange={e => setEditingConfig(c => c && { ...c, [f.key]: e.target.value })}
@@ -140,7 +140,7 @@ export default function SessionManager({ token, onClose }: Props) {
                 </div>
               ))}
               <button
-                style={{ ...s.createBtn, ...(savingCfg ? s.createBtnDisabled : {}) }}
+                className={`bg-nexus-accent border-none rounded-md text-white cursor-pointer text-sm font-semibold px-5 py-2.5 w-full ${savingCfg ? 'opacity-50 cursor-not-allowed' : ''}`}
                 onPointerDown={() => { if (!savingCfg) saveConfig() }}
                 disabled={savingCfg}
               >
@@ -154,102 +154,56 @@ export default function SessionManager({ token, onClose }: Props) {
   }
 
   return (
-    <div style={isDesktop ? s.desktopOverlay : s.overlay}>
+    <div className={isDesktop ? 'fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-5' : 'fixed inset-0 bg-black/60 z-[100]'}>
       <GhostShield />
-      <div style={isDesktop ? s.desktopPanel : s.panel}>
+      <div className={isDesktop ? 'bg-nexus-bg border border-nexus-border rounded-xl flex flex-col text-nexus-text w-full max-w-[800px] max-h-[85vh] shadow-[0_20px_60px_rgba(0,0,0,0.5)] overflow-hidden' : 'fixed inset-0 bg-nexus-bg flex flex-col text-nexus-text'}>
         {/* 顶部：标题 + 关闭 */}
-        <div style={s.header}>
-          <span style={s.title}>API 配置管理</span>
-          <button style={{...s.closeBtn, display: 'flex', alignItems: 'center', justifyContent: 'center'}} onPointerDown={onClose}><Icon name="x" size={20} /></button>
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-nexus-border shrink-0">
+          <span className="text-base font-semibold">API 配置管理</span>
+          <button className="bg-transparent border-none text-nexus-text-2 cursor-pointer text-2xl leading-none px-1 flex items-center justify-center" onPointerDown={onClose}><Icon name="x" size={20} /></button>
         </div>
 
         {/* 配置列表 */}
-        <div style={s.scrollArea}>
-          <div style={s.section}>
-            <div style={s.sectionHeader}>
-              <span style={s.sectionTitle}>API 配置 Profiles</span>
+        <div className="flex-1 overflow-y-auto py-2">
+          <div className="px-4 py-3 border-b border-nexus-border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[11px] text-nexus-text-2 tracking-wider uppercase mb-2">API 配置 Profiles</span>
               <button
-                style={s.refreshBtn}
+                className="bg-transparent border border-nexus-border rounded text-nexus-text-2 cursor-pointer text-[11px] px-2 py-0.5"
                 onPointerDown={() => setEditingConfig({ id: '', isNew: true, ...EMPTY_CONFIG })}
               >
                 + 新建
               </button>
             </div>
-            {loadingCfg && <div style={s.emptyMsg}>加载中...</div>}
+            {loadingCfg && <div className="text-nexus-muted text-sm py-2">加载中...</div>}
             {!loadingCfg && configs.length === 0 && (
-              <div style={s.emptyMsg}>暂无配置。点击「+ 新建」添加 API 配置。</div>
+              <div className="text-nexus-muted text-sm py-2">暂无配置。点击「+ 新建」添加 API 配置。</div>
             )}
             {configs.map(cfg => (
-              <div key={cfg.id} style={s.configRow}>
-                <div style={s.configInfo}>
-                  <div style={s.configLabel}>{cfg.label}</div>
-                  <div style={s.configMeta}>{cfg.id} · {cfg.DEFAULT_MODEL || '—'}</div>
+              <div key={cfg.id} className="flex items-center gap-2.5 py-2.5 border-b border-nexus-border">
+                <div className="flex-1">
+                  <div className="text-nexus-text text-sm">{cfg.label}</div>
+                  <div className="text-nexus-muted text-[11px] mt-0.5 font-mono">{cfg.id} · {cfg.DEFAULT_MODEL || '—'}</div>
                 </div>
-                <div style={s.configActions}>
+                <div className="flex gap-1.5 shrink-0">
                   <button
-                    style={s.editBtn}
+                    className="bg-transparent border border-nexus-border rounded text-nexus-accent cursor-pointer text-[11px] px-2 py-[3px]"
                     onPointerDown={() => setEditingConfig({ id: cfg.id, isNew: false, label: cfg.label, BASE_URL: cfg.BASE_URL, AUTH_TOKEN: cfg.AUTH_TOKEN, API_KEY: cfg.API_KEY, DEFAULT_MODEL: cfg.DEFAULT_MODEL, THINK_MODEL: cfg.THINK_MODEL, LONG_CONTEXT_MODEL: cfg.LONG_CONTEXT_MODEL, DEFAULT_HAIKU_MODEL: cfg.DEFAULT_HAIKU_MODEL, API_TIMEOUT_MS: cfg.API_TIMEOUT_MS })}
                   >编辑</button>
                   <button
-                    style={s.deleteBtn}
+                    className="bg-transparent border border-nexus-border rounded text-nexus-error cursor-pointer text-[11px] px-2 py-[3px]"
                     onPointerDown={() => deleteConfig(cfg.id)}
                   >删除</button>
                 </div>
               </div>
             ))}
           </div>
-          <div style={{ ...s.section, color: 'var(--nexus-text2)', fontSize: 11, lineHeight: 1.6 }}>
-            <div style={s.sectionTitle}>说明</div>
-            <p>每个配置对应一个 API provider。新建会话时选择配置后，会以该 provider 的 API key 启动 claude，且每个项目的会话历史独立保存在项目目录的 <code style={s.code}>.claude-data/</code> 中，退出后再次进入可自动续接上下文。</p>
+          <div className="px-4 py-3 text-nexus-text-2 text-[11px] leading-relaxed">
+            <div className="text-[11px] text-nexus-text-2 tracking-wider uppercase mb-2">说明</div>
+            <p>每个配置对应一个 API provider。新建会话时选择配置后，会以该 provider 的 API key 启动 claude，且每个项目的会话历史独立保存在项目目录的 <code className="bg-nexus-bg-2 rounded px-1 font-mono text-[10px] text-nexus-accent">.claude-data/</code> 中，退出后再次进入可自动续接上下文。</p>
           </div>
         </div>
       </div>
     </div>
   )
-}
-
-const s: Record<string, React.CSSProperties> = {
-  // 移动端样式（默认）
-  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', zIndex: 100 },
-  panel: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'var(--nexus-bg)', display: 'flex', flexDirection: 'column', color: 'var(--nexus-text)' },
-
-  // PC 端样式
-  desktopOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' },
-  desktopPanel: { background: 'var(--nexus-bg)', border: '1px solid var(--nexus-border)', borderRadius: 12, display: 'flex', flexDirection: 'column', color: 'var(--nexus-text)', width: '100%', maxWidth: 800, maxHeight: '85vh', boxShadow: '0 20px 60px rgba(0,0,0,0.5)', overflow: 'hidden' },
-
-  header: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid var(--nexus-border)', flexShrink: 0 },
-  title: { fontSize: 16, fontWeight: 600 },
-  closeBtn: { background: 'transparent', border: 'none', color: 'var(--nexus-text2)', cursor: 'pointer', fontSize: 24, lineHeight: 1, padding: '0 4px' },
-  scrollArea: { flex: 1, overflowY: 'auto', padding: '8px 0' },
-  section: { padding: '12px 16px', borderBottom: '1px solid var(--nexus-border)' },
-  sectionHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  sectionTitle: { fontSize: 11, color: 'var(--nexus-text2)', letterSpacing: 0.5, textTransform: 'uppercase' as const, marginBottom: 8 },
-  refreshBtn: { background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 4, color: 'var(--nexus-text2)', cursor: 'pointer', fontSize: 11, padding: '2px 8px' },
-  errorMsg: { color: 'var(--nexus-error)', fontSize: 12, marginBottom: 8 },
-  emptyMsg: { color: 'var(--nexus-muted)', fontSize: 13, padding: '8px 0' },
-
-  // 移动端表单样式
-  formRow: { display: 'flex', flexDirection: 'column' as const, gap: 4, marginBottom: 10 },
-  label: { color: 'var(--nexus-text2)', fontSize: 12 },
-  input: { background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 14, padding: '8px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' as const },
-  inputDisabled: { opacity: 0.5 },
-
-  // PC 端表单样式（左右布局）
-  desktopFormRow: { display: 'flex', flexDirection: 'row' as const, alignItems: 'center', gap: 16, marginBottom: 12 },
-  desktopLabel: { color: 'var(--nexus-text2)', fontSize: 13, width: 140, flexShrink: 0, textAlign: 'right' as const },
-  desktopInput: { background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 14, padding: '10px 12px', outline: 'none', flex: 1, boxSizing: 'border-box' as const },
-
-  select: { background: 'var(--nexus-bg2)', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text)', fontSize: 14, padding: '8px 10px', outline: 'none', width: '100%', boxSizing: 'border-box' as const },
-  hint: { color: 'var(--nexus-muted)', fontSize: 11, marginBottom: 10, lineHeight: 1.6 },
-  code: { background: 'var(--nexus-bg2)', borderRadius: 3, padding: '1px 4px', fontFamily: 'Menlo, Monaco, "Cascadia Code", "Fira Code", monospace', fontSize: 10, color: 'var(--nexus-accent)' },
-  createBtn: { background: 'var(--nexus-accent)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', fontSize: 14, fontWeight: 600, padding: '10px 20px', width: '100%' },
-  createBtnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
-  logoutBtn: { background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 6, color: 'var(--nexus-text2)', cursor: 'pointer', fontSize: 14, padding: '10px 20px', width: '100%' },
-  configRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--nexus-border)' },
-  configInfo: { flex: 1 },
-  configLabel: { color: 'var(--nexus-text)', fontSize: 14 },
-  configMeta: { color: 'var(--nexus-muted)', fontSize: 11, marginTop: 2, fontFamily: 'monospace' },
-  configActions: { display: 'flex', gap: 6, flexShrink: 0 },
-  editBtn: { background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 4, color: 'var(--nexus-accent)', cursor: 'pointer', fontSize: 11, padding: '3px 8px' },
-  deleteBtn: { background: 'transparent', border: '1px solid var(--nexus-border)', borderRadius: 4, color: 'var(--nexus-error)', cursor: 'pointer', fontSize: 11, padding: '3px 8px' },
 }

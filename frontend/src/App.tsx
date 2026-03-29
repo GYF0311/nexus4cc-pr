@@ -45,94 +45,25 @@ export default function App() {
   }
 
   return (
-    <div style={styles.loginContainer}>
-      <div style={styles.loginBox}>
-        <h1 style={styles.title}>Nexus</h1>
-        <p style={styles.subtitle}>AI Agent 终端面板 <span style={styles.version}>v1.7.0</span></p>
-        <form onSubmit={handleLogin} style={styles.form}>
+    <div className="flex items-center justify-center w-full h-full bg-nexus-bg">
+      <div className="bg-nexus-bg-2 rounded-xl p-10 px-8 min-w-80 shadow-[0_8px_32px_rgba(0,0,0,0.3)] border border-nexus-border">
+        <h1 className="text-nexus-text text-3xl font-bold text-center mb-2 tracking-widest">Nexus</h1>
+        <p className="text-nexus-text-2 text-sm text-center mb-8">AI Agent 终端面板 <span className="text-nexus-muted text-xs font-normal ml-1.5">v1.7.0</span></p>
+        <form onSubmit={handleLogin} className="flex flex-col gap-3">
           <input
             type="password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             placeholder="输入密码"
             autoFocus
-            style={styles.input}
+            className="bg-nexus-bg border border-nexus-border rounded-lg text-nexus-text text-base py-3 px-4 outline-none"
           />
-          {error && <p style={styles.error}>{error}</p>}
-          <button type="submit" disabled={loading} style={styles.button}>
+          {error && <p className="text-nexus-error text-sm text-center">{error}</p>}
+          <button type="submit" disabled={loading} className="bg-nexus-accent border-none rounded-lg text-white text-base font-semibold py-3 px-6 mt-2 cursor-pointer">
             {loading ? '登录中...' : '登录'}
           </button>
         </form>
       </div>
     </div>
   )
-}
-
-const styles: Record<string, React.CSSProperties> = {
-  loginContainer: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    height: '100%',
-    background: 'var(--nexus-bg)',
-  },
-  loginBox: {
-    background: 'var(--nexus-bg2)',
-    borderRadius: 12,
-    padding: '40px 32px',
-    minWidth: 320,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-    border: '1px solid var(--nexus-border)',
-  },
-  title: {
-    color: 'var(--nexus-text)',
-    fontSize: 32,
-    fontWeight: 700,
-    textAlign: 'center',
-    marginBottom: 8,
-    letterSpacing: 4,
-  },
-  subtitle: {
-    color: 'var(--nexus-text2)',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 12,
-  },
-  input: {
-    background: 'var(--nexus-bg)',
-    border: '1px solid var(--nexus-border)',
-    borderRadius: 8,
-    color: 'var(--nexus-text)',
-    fontSize: 16,
-    padding: '12px 16px',
-    outline: 'none',
-  },
-  error: {
-    color: 'var(--nexus-error)',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-  button: {
-    background: 'var(--nexus-accent)',
-    border: 'none',
-    borderRadius: 8,
-    color: '#fff',
-    cursor: 'pointer',
-    fontSize: 16,
-    fontWeight: 600,
-    padding: '12px 24px',
-    marginTop: 8,
-  },
-  version: {
-    color: 'var(--nexus-muted)',
-    fontSize: 12,
-    fontWeight: 400,
-    marginLeft: 6,
-  },
 }
