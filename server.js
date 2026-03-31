@@ -693,9 +693,8 @@ app.post('/api/projects/:name/channels', authMiddleware, (req, res) => {
     if (match) cwd = match[1]
   } catch {}
 
-  // Channel 命名：目录名[-profile名]-序号
-  const dirPart = cwd.replace(/^\/+|\/+$/g, '').split('/').pop() || 'channel'
-  const baseName = profile ? `${dirPart}-${profile}` : dirPart
+  // Channel 命名：profile 名[-序号]
+  const baseName = profile || 'channel'
   let channelName = baseName
   try {
     const existing = execSync(`tmux list-windows -t ${sessionName} -F "#{window_name}"`).toString().trim().split('\n')

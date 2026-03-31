@@ -1482,7 +1482,7 @@ export default function Terminal({ token }: Props) {
               ) : (
                 /* Expanded Sidebar - Project + Channel list */
                 <div
-                  className="flex-1 flex flex-col min-h-0"
+                  className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   onClick={(e) => {
                     if (e.target === e.currentTarget) {
                       setSidebarCollapsed(true)
