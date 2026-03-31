@@ -401,7 +401,7 @@ export default function SessionManagerV2({
               <div>
                 <div className="text-xs font-semibold text-nexus-text tracking-wide flex items-center gap-1.5">
                   <span className="text-sm">📂</span>
-                  {currentProjectInfo?.name || currentProject || '未选择项目'}
+                  {currentProjectInfo?.name || currentProject || t('sessionMgr.noProject')}
                 </div>
                 {currentProjectInfo?.path && (
                   <div className="text-[11px] text-nexus-text-2 mt-0.5 font-mono overflow-hidden text-ellipsis whitespace-nowrap" title={currentProjectInfo.path}>
@@ -443,8 +443,7 @@ export default function SessionManagerV2({
                         style={{ background: STATUS_DOT[status] }}
                         title={status}
                       />
-                      <span className="text-nexus-text-2 text-[13px] font-medium select-none">#</span>
-                      <span className="flex-1 text-sm text-nexus-text overflow-hidden text-ellipsis whitespace-nowrap">{channel.name}</span>
+                      <span className="flex-1 text-sm text-nexus-text overflow-hidden text-ellipsis whitespace-nowrap">#{channel.name}</span>
                       {/* 三个点菜单按钮 */}
                       <button
                         className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center opacity-60 transition-opacity duration-150"
@@ -504,7 +503,7 @@ export default function SessionManagerV2({
                             y,
                           })
                         }}
-                        title="更多选项"
+                        title={t('sessionMgr.moreOptions')}
                       >
                         <Icon name="more" size={16} />
                       </button>
@@ -517,7 +516,7 @@ export default function SessionManagerV2({
             {/* 新建 Channel 按钮 */}
             <button className="flex items-center justify-center gap-1.5 mx-4 my-2 px-3 py-2 bg-transparent border border-dashed border-nexus-border rounded-md text-nexus-text-2 text-sm cursor-pointer" onPointerDown={onNewChannel}>
               <Icon name="plus" size={14} />
-              <span>新 Channel</span>
+              <span>{t('sessionMgr.newChannel')}</span>
             </button>
 
             {/* Channel 菜单（长按或点击三个点） */}
@@ -566,7 +565,7 @@ export default function SessionManagerV2({
             <div className="px-4 pb-2 border-b border-nexus-border mb-2">
               <div className="text-xs font-semibold text-nexus-text tracking-wide flex items-center gap-1.5">
                 <span className="text-sm">📁</span>
-                Projects
+                {t('sessionMgr.projects')}
               </div>
             </div>
 
@@ -653,7 +652,7 @@ export default function SessionManagerV2({
                             y,
                           })
                         }}
-                        title="更多选项"
+                        title={t('sessionMgr.moreOptions')}
                       >
                         <Icon name="more" size={16} />
                       </button>
@@ -666,7 +665,7 @@ export default function SessionManagerV2({
             {/* 新建 Project 按钮 */}
             <button className="flex items-center justify-center gap-1.5 mx-4 my-2 px-3 py-2 bg-transparent border border-dashed border-nexus-border rounded-md text-nexus-text-2 text-sm cursor-pointer" onPointerDown={onNewProject}>
               <Icon name="plus" size={14} />
-              <span>新 Project</span>
+              <span>{t('sessionMgr.newProject')}</span>
             </button>
 
             {/* Project 菜单 */}
