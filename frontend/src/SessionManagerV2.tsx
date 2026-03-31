@@ -443,7 +443,8 @@ export default function SessionManagerV2({
                         style={{ background: STATUS_DOT[status] }}
                         title={status}
                       />
-                      <span className="flex-1 text-sm text-nexus-text overflow-hidden text-ellipsis whitespace-nowrap">#{channel.name}</span>
+                      <span className="text-nexus-text-2 text-[13px] font-medium select-none">#</span>
+                      <span className="flex-1 text-sm text-nexus-text overflow-hidden text-ellipsis whitespace-nowrap">{channel.name}</span>
                       {/* 三个点菜单按钮 */}
                       <button
                         className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center opacity-60 transition-opacity duration-150"
