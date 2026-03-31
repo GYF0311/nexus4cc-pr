@@ -58,6 +58,14 @@ export interface SessionManagerV2Handle {
   refresh: () => void
 }
 
+// Compute a sidebar height based on viewport when in sidebar mode,
+// so child sections have real pixel bounds to constrain against.
+function useSidebarHeight() {
+  const isDesktop = useIsDesktop()
+  const toolbarHeight = 52
+  return isDesktop ? (window.innerHeight - toolbarHeight) : undefined
+}
+
 export default forwardRef<SessionManagerV2Handle, Props>(function SessionManagerV2({
   token,
   currentProject,
@@ -74,6 +82,7 @@ export default forwardRef<SessionManagerV2Handle, Props>(function SessionManager
   const { t } = useTranslation()
   const isDesktop = useIsDesktop()
   const isSidebar = layout === 'sidebar'
+  const sidebarHeight = useSidebarHeight()
   const [projects, setProjects] = useState<Project[]>([])
   const [channels, setChannels] = useState<Channel[]>([])
   const [loadingProjects, setLoadingProjects] = useState(false)
@@ -528,9 +537,127 @@ export default forwardRef<SessionManagerV2Handle, Props>(function SessionManager
 
   // ====== Sidebar mode ======
   if (isSidebar) {
+    const projectMaxH = sidebarHeight ? Math.floor(sidebarHeight * 0.32) : 180
+    const channelFixedH = sidebarHeight ? Math.floor(sidebarHeight * 0.48) : 250
     return (
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-nexus-bg text-nexus-text">
-        {content}
+      <div className="h-full flex flex-col bg-nexus-bg text-nexus-text" style={{ maxHeight: sidebarHeight ?? undefined }}>
+        {error && (
+          <div className="bg-red-500/15 text-nexus-error px-4 py-2.5 text-sm flex items-center justify-between border-b border-nexus-border shrink-0">
+            {error}
+            <button className="bg-transparent border-none text-nexus-error cursor-pointer p-0.5" onPointerDown={() => setError(null)}>
+              <Icon name="x" size={14} />
+            </button>
+          </div>
+        )}
+
+        {/* Projects section: fixed max-height, internal scroll */}
+        <div className="flex-shrink-0 flex flex-col" style={{ maxHeight: projectMaxH, overflow: 'hidden' }}>
+          <div className="px-3 py-1.5 border-b border-nexus-border shrink-0">
+            <div className="text-xs font-semibold text-nexus-text tracking-wide flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">📁</span>
+                {t('sessionMgr.projects')}
+              </div>
+              <button
+                className="bg-transparent border-none text-nexus-text-2 cursor-pointer p-1 flex items-center justify-center opacity-70 hover:opacity-100 transition-opacity"
+                onClick={handleRefresh}
+                title={t('sessionMgr.refresh') || 'Refresh'}
+              >
+                <Icon name="refresh" size={14} />
+              </button>
+            </div>
+          </div>
+          <div
+            className="overflow-y-auto px-1.5 py-1"
+            style={{ maxHeight: projectMaxH - 36, minHeight: 40 }}
+            onClick={(e) => { if (onBackgroundClick && e.target === e.currentTarget) onBackgroundClick() }}
+          >
+            {loadingProjects ? (
+              <div className="text-nexus-muted text-sm px-3 py-2">{t('common.loading')}</div>
+            ) : projects.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-3 py-2 text-nexus-muted">
+                <div className="text-sm">{t('sessionMgr.noProjects')}</div>
+              </div>
+            ) : projects.map(project => {
+              const isActive = project.name === currentProject
+              return (
+                <div
+                  key={project.name}
+                  data-menu-row
+                  className={`flex items-start gap-2 px-2.5 py-1.5 rounded cursor-pointer mb-0.5 select-none group/item ${isActive ? 'bg-blue-500/15' : ''}`}
+                  onPointerDown={() => { if (project.name !== currentProject) handleProjectClick(project) }}
+                  onContextMenu={(e) => { e.preventDefault(); handleSidebarContext(e, undefined, project) }}
+                >
+                  <span className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${isActive ? 'bg-blue-500' : 'bg-nexus-muted'}`} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-nexus-text truncate leading-tight" title={project.name}>{project.name}</div>
+                    {project.path && (
+                      <div className="text-[11px] text-nexus-bg-2 font-mono truncate mt-0.5" title={project.path}>
+                        {formatPath(project.path)}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-xs text-nexus-text-2 font-mono shrink-0">({project.channelCount})</span>
+                </div>
+              )
+            })}
+          </div>
+          <button className="flex items-center justify-center gap-1.5 mx-3 my-1 px-2 py-1 bg-transparent border border-dashed border-nexus-border rounded text-nexus-text-2 text-sm cursor-pointer shrink-0 mt-auto" onPointerDown={onNewProject}>
+            <Icon name="plus" size={14} />
+            <span>{t('sessionMgr.newProject')}</span>
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="flex-shrink-0 h-px bg-nexus-border my-1" />
+
+        {/* Channels section: fixed height, internal scroll */}
+        <div className="flex-shrink-0 flex flex-col" style={{ height: channelFixedH, overflow: 'hidden' }}>
+          <div className="px-3 py-1.5 border-b border-nexus-border shrink-0">
+            <div className="text-xs font-semibold text-nexus-text tracking-wide flex items-center gap-1.5">
+              <span className="text-sm">#</span>
+              {t('sessionMgr.channels')}
+            </div>
+          </div>
+          <div
+            className="overflow-y-auto px-1.5 py-1"
+            style={{ height: channelFixedH - 44, overflowY: 'auto' }}
+            onClick={(e) => { if (onBackgroundClick && e.target === e.currentTarget) onBackgroundClick() }}
+          >
+            {loadingChannels ? (
+              <div className="text-nexus-muted text-sm px-3 py-2">{t('common.loading')}</div>
+            ) : channels.length === 0 ? (
+              <div className="flex flex-col items-center justify-center px-3 py-2 text-nexus-muted">
+                <div className="text-sm">{t('sessionMgr.noChannels')}</div>
+              </div>
+            ) : channels.map(channel => {
+              const isActive = channel.index === currentChannelIndex
+              const status = getChannelStatus(channel, isActive)
+              return (
+                <div
+                  key={channel.index}
+                  data-menu-row
+                  className={`flex items-start gap-2 px-2.5 py-1.5 rounded cursor-pointer mb-0.5 select-none transition-colors duration-75 group/item ${isActive ? 'bg-nexus-bg-2' : ''}`}
+                  style={{ WebkitTouchCallout: 'none' }}
+                  onPointerDown={() => { doSwitchChannel(channel, false) }}
+                  onContextMenu={(e) => { e.preventDefault(); handleSidebarContext(e, channel, undefined) }}
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0 mt-0.5" style={{ background: STATUS_DOT[status] }} title={status} />
+                  <span className="text-nexus-text-2 text-[13px] font-medium select-none shrink-0 mt-0">#</span>
+                  <span className="flex-1 text-sm text-nexus-text truncate leading-tight min-w-0" title={channel.name}>{channel.name}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Fixed action button at bottom */}
+        <div className="shrink-0 border-t border-nexus-border" onClick={(e) => e.stopPropagation()}>
+          <button className="flex items-center justify-center gap-1.5 mx-3 my-1.5 px-2.5 py-1.5 bg-transparent border border-dashed border-nexus-border rounded text-nexus-text-2 text-sm cursor-pointer" onPointerDown={onNewChannel}>
+            <Icon name="plus" size={14} />
+            <span>{t('sessionMgr.newChannel')}</span>
+          </button>
+        </div>
 
         {/* Sidebar right-click menu - channel */}
         {sidebarChannelMenu && (

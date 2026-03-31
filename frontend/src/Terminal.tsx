@@ -1371,8 +1371,7 @@ export default function Terminal({ token }: Props) {
           <div className="flex flex-1 overflow-hidden min-h-0">
             {/* Collapsible Sidebar */}
             <div
-              className="flex-shrink-0 flex flex-col min-h-0 bg-nexus-bg border-r border-nexus-border transition-[width] duration-200 ease-out"
-              style={{ width: sidebarCollapsed ? 48 : 220 }}
+              style={{ width: sidebarCollapsed ? 48 : 220, overflow: 'clip' }}
               onClick={() => {
                 setSidebarCollapsed(!sidebarCollapsed)
                 localStorage.setItem('nexus_sidebar_collapsed', String(!sidebarCollapsed))
@@ -1381,7 +1380,8 @@ export default function Terminal({ token }: Props) {
               {sidebarCollapsed ? (
                 /* Collapsed Sidebar - Icon Only */
                 <div
-                  className="flex-1 overflow-hidden flex flex-col"
+                    className="flex-1 overflow-hidden flex flex-col"
+                  style={{ overflow: 'clip' }}
                 >
                   {/* Scrollable window indicators */}
                   <div
@@ -1480,7 +1480,7 @@ export default function Terminal({ token }: Props) {
                   </div>
                 </div>
               ) : (
-                /* Expanded Sidebar - Project + Channel list */
+                /* Expanded Sidebar: scrollable content + fixed bottom bar */
                 <div
                   className="flex-1 flex flex-col min-h-0 overflow-hidden"
                   onClick={(e) => {
@@ -1508,7 +1508,7 @@ export default function Terminal({ token }: Props) {
                       layout="sidebar"
                     />
                   </div>
-                  <div className="border-t border-nexus-border flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                  <div className="border-t border-nexus-border shrink-0" onClick={(e) => e.stopPropagation()}>
                     <Toolbar {...toolbarProps} embedded />
                   </div>
                 </div>
