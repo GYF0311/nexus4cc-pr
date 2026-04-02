@@ -10,7 +10,7 @@ export type IconName =
   | 'chevronUp' | 'chevronLeft' | 'chevronRight' | 'grip' | 'trash' | 'plus' | 'copy'
   | 'arrowDown' | 'arrowLeft' | 'arrowRight' | 'message'
   | 'play' | 'stop' | 'refresh' | 'history' | 'pin' | 'folder'
-  | 'folderPlus' | 'folderOpen' | 'image' | 'alert'
+  | 'folderPlus' | 'folderOpen' | 'image' | 'alert' | 'eye' | 'download'
 
 interface Props {
   name: IconName
@@ -170,6 +170,19 @@ const ICONS: Record<IconName, React.ReactNode> = {
       <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
       <line x1="12" y1="9" x2="12" y2="13" />
       <line x1="12" y1="17" x2="12.01" y2="17" />
+    </g>
+  ),
+  eye: (
+    <g>
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </g>
+  ),
+  download: (
+    <g>
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="7 10 12 15 17 10" />
+      <line x1="12" y1="15" x2="12" y2="3" />
     </g>
   ),
 }

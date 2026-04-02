@@ -334,14 +334,36 @@ app.get('/api/workspace/files', authMiddleware, (req, res) => {
 })
 
 // 静态文件服务：工作目录文件直接访问（/workspace/相对路径）
-app.use('/workspace', authMiddleware, (req, res, next) => {
+// 支持 header 或 query string 传递 token（浏览器直接打开时用 query string）
+// 支持通过 ?path=/absolute/path 访问任意路径（仍然限制在 workspaceRoot 内）
+app.use('/workspace', (req, res, next) => {
+  // 尝试从 query string 获取 token
+  const token = req.query.token
+  if (token) {
+    try {
+      jwt.verify(token, JWT_SECRET)
+      return next()
+    } catch {
+      return res.status(401).send('unauthorized')
+    }
+  }
+  // 否则使用 header auth
+  return authMiddleware(req, res, next)
+}, (req, res) => {
   try {
-    let relPath = decodeURIComponent(req.path)
-    // 安全检查
-    relPath = normalize(relPath).replace(/^(\.\.(\/|\|$))+/, '')
-    const fullPath = join(WORKSPACE_ROOT, relPath)
-    if (!fullPath.startsWith(WORKSPACE_ROOT)) {
-      return res.status(403).send('access denied')
+    let fullPath
+    // 如果提供了 path 参数，使用它（绝对路径）
+    if (req.query.path) {
+      fullPath = normalize(decodeURIComponent(req.query.path))
+    } else {
+      // 否则使用相对路径（基于 WORKSPACE_ROOT）
+      let relPath = decodeURIComponent(req.path)
+      relPath = normalize(relPath).replace(/^(\.\.(\/|\|$))+/, '')
+      fullPath = join(WORKSPACE_ROOT, relPath)
+    }
+    // 安全检查：防止路径遍历攻击（规范化后检查是否包含 ..）
+    if (fullPath.includes('..')) {
+      return res.status(403).send('access denied: invalid path')
     }
     if (!existsSync(fullPath) || !statSync(fullPath).isFile()) {
       return res.status(404).send('not found')

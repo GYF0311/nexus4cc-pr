@@ -135,21 +135,32 @@ export default function WorkspaceBrowser({ token, onClose, initialPath = '', cur
     }
   }
 
-  // 打开文件
-  function openFile(name: string) {
-    if (!currentPath || !workspaceRoot) return
+  // 获取文件的完整 URL（带上 token 用于浏览器直接访问）
+  function getFileUrl(name: string): string {
+    if (!currentPath || !workspaceRoot) return ''
 
-    // 构造文件访问 URL
-    // 如果 currentPath 在 workspaceRoot 下，使用 /workspace 路由
-    if (currentPath.startsWith(workspaceRoot)) {
-      let rel = currentPath.slice(workspaceRoot.length).replace(/^\/+/, '')
-      const filePath = rel ? `/workspace/${rel}/${name}` : `/workspace/${name}`
-      window.open(filePath, '_blank')
-    } else {
-      // 不在 workspace 下的文件，尝试直接打开（可能 404）
-      const filePath = currentPath.endsWith('/') ? `${currentPath}${name}` : `${currentPath}/${name}`
-      window.open(filePath, '_blank')
-    }
+    const filePath = currentPath.endsWith('/') ? `${currentPath}${name}` : `${currentPath}/${name}`
+    // 统一使用 /workspace?path=xxx 格式，避免不同路径格式问题
+    return `/workspace?path=${encodeURIComponent(filePath)}&token=${encodeURIComponent(token)}`
+  }
+
+  // 打开文件（查看）
+  function openFile(name: string) {
+    const url = getFileUrl(name)
+    if (url) window.open(url, '_blank')
+  }
+
+  // 下载文件
+  function downloadFile(name: string) {
+    const url = getFileUrl(name)
+    if (!url) return
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = name
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
   }
 
   // 双击处理：目录进入，文件打开
@@ -178,6 +189,11 @@ export default function WorkspaceBrowser({ token, onClose, initialPath = '', cur
     if (a.type === b.type) return a.name.localeCompare(b.name)
     return a.type === 'dir' ? -1 : 1
   })
+
+  // 获取当前选中的文件条目
+  const selectedEntry = selectedName && selectedName !== '..'
+    ? sortedEntries.find(e => e.name === selectedName)
+    : null
 
   return (
     <div className="fixed inset-0 z-[450] bg-nexus-bg flex flex-col">
@@ -286,8 +302,31 @@ export default function WorkspaceBrowser({ token, onClose, initialPath = '', cur
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-3 border-t border-nexus-border text-nexus-muted text-xs text-center flex-shrink-0">
-        {currentPath && t('workspace.footer', { count: entries.length })}
+      <div className="px-4 py-3 border-t border-nexus-border flex-shrink-0 flex items-center justify-between gap-2">
+        <span className="text-nexus-muted text-xs">
+          {currentPath && t('workspace.footer', { count: entries.length })}
+        </span>
+        {/* 文件操作按钮 */}
+        {selectedEntry?.type === 'file' && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => openFile(selectedEntry.name)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-nexus-bg-2 hover:bg-nexus-bg-2/80 text-nexus-text text-xs rounded border border-nexus-border transition-colors"
+              title={t('workspace.view')}
+            >
+              <Icon name="eye" size={14} />
+              <span className="hidden sm:inline">{t('workspace.view')}</span>
+            </button>
+            <button
+              onClick={() => downloadFile(selectedEntry.name)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-nexus-accent hover:bg-nexus-accent/90 text-white text-xs rounded transition-colors"
+              title={t('workspace.download')}
+            >
+              <Icon name="download" size={14} />
+              <span className="hidden sm:inline">{t('workspace.download')}</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

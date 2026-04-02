@@ -48,7 +48,9 @@
     "root": "Root",
     "empty": "Empty directory",
     "parent": "Parent directory",
-    "footer": "{{count}} items"
+    "footer": "{{count}} items",
+    "view": "View",
+    "download": "Download"
   },
   "newChannel": {
     "title": "New Channel",
