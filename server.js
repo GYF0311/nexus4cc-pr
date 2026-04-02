@@ -447,8 +447,10 @@ app.post('/api/files/upload', authMiddleware, (req, res, next) => {
     const uploadDir = join(UPLOADS_DIR, dateDir)
     if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true })
 
-    // 清理文件名
-    const safe = req.file.originalname.replace(/[^\x00-\x7F]/g, '_').replace(/[<>:"|?*]/g, '_')
+    // 使用前端传递的原始文件名（避免 multer 解析编码问题）
+    const originalName = req.body.originalName || req.file.originalname
+    // 清理文件名：只保留合法字符，中文保留
+    const safe = originalName.replace(/[<>:"|?*\\/\x00-\x1f]/g, '_')
     const filePath = join(uploadDir, safe)
     const overwrite = req.query.overwrite === '1'
 
@@ -471,7 +473,7 @@ app.post('/api/files/upload', authMiddleware, (req, res, next) => {
         url,
         fullPath: filePath,
         size: req.file.size,
-        originalName: req.file.originalname
+        originalName: originalName
       })
     } catch (writeErr) {
       res.status(500).json({ error: writeErr.message })

@@ -633,6 +633,7 @@ export default function Terminal({ token }: Props) {
   async function uploadFile(file: File, overwrite = false) {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('originalName', file.name)
     try {
       const url = overwrite ? '/api/files/upload?overwrite=1' : '/api/files/upload'
       const res = await fetch(url, {
