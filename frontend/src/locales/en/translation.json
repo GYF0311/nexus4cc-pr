@@ -59,7 +59,16 @@
     "fileNamePlaceholder": "Filename (e.g. readme.txt, notes.md)",
     "fileExtensionsHint": "Supports .txt, .md, .json and any extension",
     "chars": "chars",
-    "preview": "Preview"
+    "preview": "Preview",
+    "copyHere": "Copy here",
+    "moveHere": "Move here",
+    "selectTargetDir": "Select target directory",
+    "enterDir": "Enter directory",
+    "copyEntry": "Copy to...",
+    "moveEntry": "Move to...",
+    "deleteEntry": "Delete",
+    "copyPath": "Copy path",
+    "deleteConfirm": "Delete \"{{name}}\"? This cannot be undone."
   },
   "newChannel": {
     "title": "New Channel",

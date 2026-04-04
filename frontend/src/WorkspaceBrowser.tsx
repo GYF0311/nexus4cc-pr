@@ -720,10 +720,14 @@ export default function WorkspaceBrowser({ token, onClose, initialPath = '', cur
         <>
           <div className="fixed inset-0 z-[480]" onClick={() => setContextMenu(null)} />
           <div
-            className="fixed z-[490] bg-nexus-bg rounded-lg border border-nexus-border shadow-lg py-1 min-w-[148px] max-w-[220px]"
+            className="fixed z-[490] bg-nexus-bg rounded-lg border border-nexus-border shadow-lg py-1 min-w-[148px]"
             style={{
-              left: Math.min(contextMenu.x, typeof window !== 'undefined' ? window.innerWidth - 160 : contextMenu.x),
-              top: Math.min(contextMenu.y, typeof window !== 'undefined' ? window.innerHeight - 240 : contextMenu.y),
+              left: (typeof window !== 'undefined' && contextMenu.x + 160 > window.innerWidth)
+                ? Math.max(8, contextMenu.x - 160)
+                : contextMenu.x,
+              top: (typeof window !== 'undefined' && contextMenu.y + 280 > window.innerHeight)
+                ? Math.max(8, contextMenu.y - 280)
+                : contextMenu.y,
             }}
           >
             <div className="px-3 py-1.5 text-nexus-text text-xs font-medium border-b border-nexus-border truncate" title={contextMenu.entry.name}>
@@ -767,7 +771,7 @@ export default function WorkspaceBrowser({ token, onClose, initialPath = '', cur
                   onClick={() => { copyEntryPath(contextMenu.entry); setContextMenu(null) }}
                   className="w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-nexus-bg-2 transition-colors text-nexus-text"
                 >
-                  <Icon name="copy" size={14} />
+                  <Icon name="clipboard" size={14} />
                   {t('workspace.copyPath')}
                 </button>
               </>
