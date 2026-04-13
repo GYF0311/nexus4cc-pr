@@ -35,10 +35,8 @@ const DATA_DIR = join(__dirname, 'data');
 const TOOLBAR_CONFIG_FILE = join(DATA_DIR, 'toolbar-config.json');
 const CONFIGS_DIR = join(DATA_DIR, 'configs');
 const TASKS_FILE = join(DATA_DIR, 'tasks.json');
-const UPLOADS_DIR = join(DATA_DIR, 'uploads');
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 if (!existsSync(CONFIGS_DIR)) mkdirSync(CONFIGS_DIR, { recursive: true });
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
 // 自动确保 anthropic.json 存在（无需用户手动创建）
 // 优先级：已有文件不覆盖；API_KEY 从环境变量 ANTHROPIC_API_KEY 检测
@@ -677,14 +675,17 @@ app.post('/api/upload', authMiddleware, (req, res, next) => {
   })
 })
 
-// ---- F-21: 独立文件上传 API（上传到 data/uploads，不混入项目目录）----
+// ---- F-21: 文件上传 API（上传到当前 workspace 的 data/uploads/）----
 
-// 按日期生成上传目录
-function getUploadDir() {
-  const dateDir = new Date().toISOString().slice(0, 10)
-  const dir = join(UPLOADS_DIR, dateDir)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-  return dir
+// 读取当前活跃 workspace 的 uploads 目录（基于 tmux NEXUS_CWD 环境变量）
+function getWorkspaceUploadsDir() {
+  let cwd = WORKSPACE_ROOT
+  try {
+    const out = execSync(`tmux show-environment -t ${TMUX_SESSION} NEXUS_CWD 2>/dev/null`).toString().trim()
+    const m = out.match(/^NEXUS_CWD=(.+)$/)
+    if (m) cwd = m[1]
+  } catch {}
+  return join(cwd, 'data', 'uploads')
 }
 
 const fileUpload = multer({
@@ -692,7 +693,7 @@ const fileUpload = multer({
   limits: { fileSize: 100 * 1024 * 1024 } // 100MB
 })
 
-// POST /api/files/upload — 上传文件到 data/uploads/日期/
+// POST /api/files/upload — 上传文件到当前 workspace/data/uploads/日期/
 // Query: overwrite=1 强制覆盖已存在的文件
 app.post('/api/files/upload', authMiddleware, (req, res, next) => {
   fileUpload.single('file')(req, res, (err) => {
@@ -700,7 +701,8 @@ app.post('/api/files/upload', authMiddleware, (req, res, next) => {
     if (!req.file) return res.status(400).json({ error: 'no file' })
 
     const dateDir = new Date().toISOString().slice(0, 10)
-    const uploadDir = join(UPLOADS_DIR, dateDir)
+    const uploadsDir = getWorkspaceUploadsDir()
+    const uploadDir = join(uploadsDir, dateDir)
     if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true })
 
     // 使用前端传递的原始文件名（避免 multer 解析编码问题）
@@ -722,7 +724,7 @@ app.post('/api/files/upload', authMiddleware, (req, res, next) => {
     // 写入文件
     try {
       writeFileSync(filePath, req.file.buffer)
-      const url = `/uploads/${dateDir}/${safe}`
+      const url = `/api/files/content?path=${encodeURIComponent(filePath)}`
       const responseData = {
         ok: true,
         filename: safe,
@@ -739,28 +741,39 @@ app.post('/api/files/upload', authMiddleware, (req, res, next) => {
   })
 })
 
-// 静态服务：上传的文件直接访问（/uploads/日期/文件名）
-app.use('/uploads', express.static(UPLOADS_DIR))
+// GET /api/files/content?path=... — 访问/下载已上传的文件（路径自描述，无状态）
+app.get('/api/files/content', authMiddleware, (req, res) => {
+  const filePath = req.query.path
+  if (!filePath || typeof filePath !== 'string') return res.status(400).json({ error: 'path required' })
+  const normalized = normalize(filePath)
+  if (!normalized.startsWith(WORKSPACE_ROOT)) return res.status(403).json({ error: 'access denied' })
+  if (!existsSync(normalized)) return res.status(404).json({ error: 'file not found' })
+  res.sendFile(normalized)
+})
 
-// GET /api/files — 列出上传的文件（按日期分组）
+// GET /api/files — 列出当前 workspace 上传的文件（按日期分组）
 app.get('/api/files', authMiddleware, (req, res) => {
   try {
+    const uploadsDir = getWorkspaceUploadsDir()
     const result = []
-    const dateDirs = readdirSync(UPLOADS_DIR, { withFileTypes: true })
+    if (!existsSync(uploadsDir)) return res.json(result)
+
+    const dateDirs = readdirSync(uploadsDir, { withFileTypes: true })
       .filter(e => e.isDirectory())
       .map(e => e.name)
       .sort((a, b) => b.localeCompare(a)) // 降序，最新的在前
 
     for (const dateDir of dateDirs) {
-      const dirPath = join(UPLOADS_DIR, dateDir)
+      const dirPath = join(uploadsDir, dateDir)
       const files = readdirSync(dirPath, { withFileTypes: true })
         .filter(e => e.isFile())
         .map(e => {
-          const stat = statSync(join(dirPath, e.name))
+          const fullPath = join(dirPath, e.name)
+          const stat = statSync(fullPath)
           return {
             name: e.name,
-            url: `/uploads/${dateDir}/${e.name}`,
-            fullPath: join(dirPath, e.name),
+            url: `/api/files/content?path=${encodeURIComponent(fullPath)}`,
+            fullPath,
             size: stat.size,
             created: stat.mtimeMs,
           }
@@ -776,35 +789,16 @@ app.get('/api/files', authMiddleware, (req, res) => {
   }
 })
 
-// DELETE /api/files/:date/:filename — 删除上传的文件
-app.delete('/api/files/:date/:filename', authMiddleware, (req, res) => {
-  const dateDir = req.params.date.replace(/[^0-9-]/g, '')
-  const filename = req.params.filename.replace(/[^a-zA-Z0-9._-]/g, '_')
-  const filePath = join(UPLOADS_DIR, dateDir, filename)
-  // 安全检查：确保文件在 uploads 目录内
-  if (!filePath.startsWith(UPLOADS_DIR)) {
-    return res.status(400).json({ error: 'invalid path' })
-  }
-  try {
-    if (existsSync(filePath)) {
-      unlinkSync(filePath)
-      res.json({ ok: true })
-    } else {
-      res.status(404).json({ error: 'file not found' })
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message })
-  }
-})
-
-// DELETE /api/files/all — 删除所有上传的文件
+// DELETE /api/files/all — 删除当前 workspace 所有上传的文件
 app.delete('/api/files/all', authMiddleware, (req, res) => {
   try {
-    const dateDirs = readdirSync(UPLOADS_DIR, { withFileTypes: true })
+    const uploadsDir = getWorkspaceUploadsDir()
+    if (!existsSync(uploadsDir)) return res.json({ ok: true, deletedCount: 0 })
+    const dateDirs = readdirSync(uploadsDir, { withFileTypes: true })
       .filter(e => e.isDirectory())
     let deletedCount = 0
     for (const dateDir of dateDirs) {
-      const dirPath = join(UPLOADS_DIR, dateDir.name)
+      const dirPath = join(uploadsDir, dateDir.name)
       const files = readdirSync(dirPath, { withFileTypes: true })
         .filter(e => e.isFile())
       for (const file of files) {
@@ -820,6 +814,24 @@ app.delete('/api/files/all', authMiddleware, (req, res) => {
       } catch {}
     }
     res.json({ ok: true, deletedCount })
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
+
+// DELETE /api/files/content?path=... — 删除指定文件（路径自描述）
+app.delete('/api/files/content', authMiddleware, (req, res) => {
+  const filePath = req.query.path
+  if (!filePath || typeof filePath !== 'string') return res.status(400).json({ error: 'path required' })
+  const normalized = normalize(filePath)
+  if (!normalized.startsWith(WORKSPACE_ROOT)) return res.status(403).json({ error: 'access denied' })
+  try {
+    if (existsSync(normalized)) {
+      unlinkSync(normalized)
+      res.json({ ok: true })
+    } else {
+      res.status(404).json({ error: 'file not found' })
+    }
   } catch (err) {
     res.status(500).json({ error: err.message })
   }

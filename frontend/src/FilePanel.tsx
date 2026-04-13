@@ -131,10 +131,10 @@ export default function FilePanel({ token, onClose }: Props) {
     }
   }
 
-  async function deleteFile(date: string, filename: string) {
+  async function deleteFile(fullPath: string, filename: string) {
     if (!confirm(t('files.deleteConfirm', { filename }))) return
     try {
-      const r = await fetch(`/api/files/${date}/${encodeURIComponent(filename)}`, {
+      const r = await fetch(`/api/files/content?path=${encodeURIComponent(fullPath)}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       })
@@ -261,7 +261,7 @@ export default function FilePanel({ token, onClose }: Props) {
                     {isCopied ? t('common.copied') : t('common.copy')}
                   </button>
                   <button
-                    onClick={() => deleteFile(file.date, file.name)}
+                    onClick={() => deleteFile(file.fullPath, file.name)}
                     className="bg-transparent border-none text-nexus-error cursor-pointer p-1.5 flex items-center justify-center opacity-60"
                     title={t('common.delete')}
                   >
@@ -309,7 +309,7 @@ export default function FilePanel({ token, onClose }: Props) {
                         {isCopied ? t('common.copied') : t('common.copy')}
                       </button>
                       <button
-                        onClick={() => deleteFile(group.date, file.name)}
+                        onClick={() => deleteFile(file.fullPath, file.name)}
                         className="bg-transparent border-none text-nexus-error cursor-pointer p-1.5 flex items-center justify-center opacity-60"
                         title={t('common.delete')}
                       >
