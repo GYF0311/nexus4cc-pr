@@ -1260,19 +1260,22 @@ export default function Terminal({ token }: Props) {
           if (xtermTa) { xtermTa.inputMode = 'none'; xtermTa.blur() }
         } else {
           keyboardVisibleRef.current = true
-          const isMobile = window.innerWidth < 768
-          if (isMobile) {
-            // 移动端（iOS / Android）统一走 IME 代理：隐藏 input 才能稳定支持
-            // iOS 语音听写、中文 IME 候选、Android Gboard 的词内建议
+          // 按平台分支：iOS 走隐藏 input 代理（支持语音听写/拼音候选），其他
+          // 平台（Android + PC）走 xterm 原生 textarea（对 Gboard / 豆包语音 /
+          // 讯飞 / 第三方 IME 兼容性最好 —— 它们对"看不见的 input"注入行为不一致）
+          const isPC = window.innerWidth >= 768
+          const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+          const useProxyInput = !isPC && isIOS
+          if (useProxyInput) {
             if (xtermTa) xtermTa.inputMode = 'none'
             if (inputRef.current) inputRef.current.inputMode = 'none'
             if (mobileInputRef.current) {
               mobileInputRef.current.focus({ preventScroll: true })
-              // 同步终端当前行到代理 input（让用户看到光标位置已有的内容）
               syncMobileInputFromTerminal()
             }
           } else {
-            // PC：焦点给 xterm 原生 textarea
+            // PC + Android：焦点给 xterm 原生 textarea，term.onData 直接捕获
+            if (mobileInputRef.current) mobileInputRef.current.blur()
             if (xtermTa) { xtermTa.inputMode = 'text'; xtermTa.focus() }
             if (inputRef.current) inputRef.current.inputMode = 'text'
           }
